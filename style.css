@@ -1,0 +1,16 @@
+html {
+    display: table;
+    width: 100vw;
+    height: 100vh;
+}
+
+html body {
+    display: table-cell;
+    vertical-align: middle;
+}
+
+body > canvas {
+    display: block;
+    margin: auto;
+    background: #000000;
+}
