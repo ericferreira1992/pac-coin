@@ -19,12 +19,12 @@ function PacCoin() {
     };
 
     this.createCanvas = function () {
-        this.canvas = document.createElement("canvas");
+        this.canvas = document.createElement('canvas');
         this.canvas.width = this.width;
         this.canvas.height = this.height;
         document.body.prepend(this.canvas);
 
-        this.context = this.canvas.getContext("2d");
+        this.context = this.canvas.getContext('2d');
     };
 
     this.makeListeners = function () {
@@ -44,7 +44,7 @@ function PacCoin() {
         this.pac.render();
     };
 
-    this.applySmooth = function (fromPosition, toPosition) {
+    this.applySmoothCoord = function (fromPosition, toPosition) {
         if (fromPosition !== toPosition) {
             var newPosition = fromPosition + ((fromPosition < toPosition) ? 1 : -1);
             if (fromPosition < toPosition && newPosition > toPosition)
@@ -61,18 +61,18 @@ function PacCoin() {
 
         this.matriz = [
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 2, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 2, 1],
             [1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1],
             [1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1],
             [1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
             [1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1],
-            [0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0],
+            [9, 9, 9, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 9, 9, 9],
             [1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1],
-            [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+            [9, 9, 9, 9, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 9, 9, 9, 9],
             [1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1],
-            [0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0],
+            [9, 9, 9, 1, 0, 1, 0, 0, 0, 9, 0, 0, 0, 1, 0, 1, 9, 9, 9],
             [1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1],
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             [1, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1],
@@ -80,13 +80,20 @@ function PacCoin() {
             [1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1],
             [1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
             [1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1],
-            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1],
             [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
         ];
 
+        this.pacBornCoords = {
+            x: 9 * this.game.blockSize,
+            y: 12 * this.game.blockSize
+        };
+
         this.positionsType = {
-            EMPTY: 0,
+            BISCUIT: 0,
             WALL: 1,
+            PILL: 2,
+            EMPTY: 9,
         };
 
         this.lengthX = this.matriz[0].length;
@@ -135,9 +142,9 @@ function PacCoin() {
                         break;
 
                     this.game.context.beginPath();
-                    this.game.context.strokeStyle = "#0000FF";
+                    this.game.context.strokeStyle = '#0000FF';
                     this.game.context.lineWidth = this.lineWidth;
-                    this.game.context.lineCap = "round";
+                    this.game.context.lineCap = 'round';
 
                     if (direction.indexOf('HORIZONTAL') >= 0) {
                         if (direction === this.WALL_DIRECTIONS.HORIZONTAL) {
@@ -232,10 +239,17 @@ function PacCoin() {
                     this.game.context.stroke();
                     break;
                 }
-                case this.positionsType.EMPTY: {
+                case this.positionsType.BISCUIT: {
                     this.game.context.beginPath();
                     this.game.context.fillStyle = 'white';
                     this.game.context.fillRect(xMid, yMid, 4, 4);
+                    break;
+                }
+                case this.positionsType.PILL: {
+                    this.game.context.beginPath();
+                    this.game.context.fillStyle = 'white';
+                    this.game.context.arc(xMid, yMid, 8, 0, Math.PI * 2, true);
+                    this.game.context.fill();
                     break;
                 }
             }
@@ -550,6 +564,65 @@ function PacCoin() {
             else
                 return -1;
         }
+
+        this.getIndexesByCoordinates = function(x, y, size, direction) {
+            if (!size) size = this.game.blockSize;
+
+            if (direction === 'UP')
+                y -= size;
+            else if (direction === 'LEFT')
+                x -= size;
+
+            var i = Math.min(Math.floor(y / size) + (y % size > 5 ? 1 : 0), this.matriz.length - 1);
+            var j = Math.min(Math.floor(x / size) + (x % size > 5 ? 1 : 0), this.matriz[0].length - 1);
+
+            return { i, j };
+        }
+
+        this.getPositionIByCoord = function(y, size) {
+            if (!size) size = this.game.blockSize;
+
+            var i = Math.min(Math.floor(y / size) + (y % size > 5 ? 1 : 0), this.matriz.length - 1);
+
+            return i;
+        }
+
+        this.getPositionJByCoord = function(x, size) {
+            if (!size) size = this.game.blockSize;
+
+            var j = Math.min(Math.floor(x / size) + (x % size > 5 ? 1 : 0), this.matriz[0].length - 1);
+
+            return j;
+        }
+
+        this.isCollidingWithWall = function(x, y, size, direction) {
+            var indexes = this.getIndexesByCoordinates(x, y, size, direction);
+            if (indexes.i >= this.matriz.length || indexes.j >= this.matriz[0].length)
+                // return { type: this.positionsType.WALL, i: indexes.i, j: indexes.j };
+                return true;
+            else {
+                var blockValue = this.matriz[indexes.i][indexes.j];
+                return blockValue === this.positionsType.WALL;
+            }
+        }
+
+        this.xCoordinateIsEnd = function(x, size) {
+            var coords = this.getIndexesByCoordinates(x, 0, size, 'RIGHT');
+            return coords.j >= (this.matriz.length - 1);
+        }
+
+        this.xCoordinateIsBegin = function(x) {
+            return x <= 0;
+        }
+
+        this.yCoordinateIsEnd = function(y, size) {
+            var coords = this.getIndexesByCoordinates(0, y, size, 'DOWN');
+            return coords.i >= (this.matriz[0].length - 1);
+        }
+
+        this.yCoordinateIsBegin = function(y) {
+            return y <= 0;
+        }
     }
 
     function Pac(game) {
@@ -558,46 +631,99 @@ function PacCoin() {
         this.image = null;
         this.imageUrl = 'assets/img/sb-icon.svg';
         this.size = this.game.blockSize;
-        this.x = 0;
-        this.y = 0;
-        this.toX = 0;
-        this.toY = 0;
+        this.x = this.game.map.pacBornCoords.x;
+        this.y = this.game.map.pacBornCoords.y;
+        this.toX = this.x;
+        this.toY = this.y;
+        this.i = function() { return this.y / this.size; }; //this.game.map.getPositionIByCoord(this.y, this.size); };
+        this.j = function() { return this.x / this.size; };// this.game.map.getPositionJByCoord(this.x, this.size); };
+        this.direction = 'NONE';
 
-        this.moveX = function (value) {
-            this.toX = (value > 0) ? Math.min(this.toX + value, this.game.width - this.size) : Math.max(this.toX + value, 0);
+        this.moveX = function (direction) {
+            var changeDirection = (this.direction === 'LEFT' || this.direction === 'RIGHT') && this.direction !== direction;
+            this.direction = direction;
+
+            var currentX = this.x;
+
+            if ((this.direction === 'LEFT' && !this.game.map.xCoordinateIsBegin(currentX)) ||
+                (this.direction === 'RIGHT' && !this.game.map.xCoordinateIsEnd(currentX)))
+            {
+                var currentIndexes = this.game.map.getIndexesByCoordinates(currentX, this.y, this.size);
+                var moveToJ = currentIndexes.j + (this.direction === 'RIGHT' ? 1 : 0);
+                var _toX = moveToJ * this.size;
+
+                if (!this.game.map.isCollidingWithWall(_toX, this.y, this.size))
+                    this.toX = _toX + (direction === 'LEFT' ? -this.size : 0);
+                else
+                    this.toX =  currentIndexes.j * this.size;
+
+            }
             this.toY = this.y;
         };
-        this.moveY = function (value) {
-            this.toY = (value > 0) ? Math.min(this.toY + value, this.game.height - this.size) : Math.max(this.toY + value, 0);
+        this.moveY = function (direction) {
+            var changeDirection = (this.direction === 'DOWN' || this.direction === 'UP') && this.direction !== direction;
+            this.direction = direction;
+
+            var currentY = this.y;
+
+            if ((this.direction === 'UP' && !this.game.map.yCoordinateIsBegin(currentY)) ||
+                (this.direction === 'DOWN' && !this.game.map.yCoordinateIsEnd(currentY)))
+            {
+                var currentIndexes = this.game.map.getIndexesByCoordinates(this.x, currentY, this.size);
+                var moveToI = currentIndexes.i + (this.direction === 'DOWN' ? 1 : 0);
+                var _toY = moveToI * this.size;
+
+                if (!this.game.map.isCollidingWithWall(this.x, _toY, this.size))
+                    this.toY = _toY + (direction === 'UP' ? -this.size : 0);
+                else
+                    this.toY =  currentIndexes.i * this.size;
+            }
             this.toX = this.x;
         };
 
         this.onKeydown = function (event) {
-            if (event.keyCode === 38)
-                this.moveY(-this.game.moveRate);
-            else if (event.keyCode === 40)
-                this.moveY(this.game.moveRate);
-            else if (event.keyCode === 37)
-                this.moveX(-this.game.moveRate);
-            else if (event.keyCode === 39)
-                this.moveX(this.game.moveRate);
+            if (event.keyCode === 38) {
+                this.moveY('UP');
+            }
+            else if (event.keyCode === 40) {
+                this.moveY('DOWN');
+            }
+            else if (event.keyCode === 37) {
+                this.moveX('LEFT');
+            }
+            else if (event.keyCode === 39) {
+                this.moveX('RIGHT');
+            }
         };
 
         this.onKeyup = function (event) {
-            if ([37, 38, 39, 40].indexOf(event.keyCode) >= 0) {
+            /* if ([37, 38, 39, 40].indexOf(event.keyCode) >= 0) {
                 if (this.x !== this.toX) {
                     var diffX = Math.floor(Math.abs(this.x - this.toX) * .5);
                     this.toX += diffX * (this.x < this.toX ? -1 : 1);
                 }
-            }
+            } */
         };
 
         this.render = function () {
-            this.game.context.beginPath();
-            this.x = this.game.applySmooth(this.x, this.toX);
-            this.y = this.game.applySmooth(this.y, this.toY);
+            this.updateCoordinates();
 
-            if (!this.image) {
+            var angle = this.calcAngle();
+            this.game.context.beginPath();
+            this.game.context.moveTo(this.x + (this.size / 2),
+            this.y + (this.size / 2));
+            this.game.context.fillStyle = '#FFFF00';
+            this.game.context.arc(
+                this.x + (this.size / 2),
+                this.y + (this.size / 2),
+                this.size / 2,
+                Math.PI * angle.start, 
+                Math.PI * angle.end,
+                angle.direction
+            );
+            this.game.context.fill();
+
+            /* if (!this.image) {
                 this.image = new Image();
                 this.image.onload = function () {
                     this.game.context.drawImage(this.image, this.x, this.y, this.size, this.size);
@@ -605,7 +731,44 @@ function PacCoin() {
                 this.image.src = this.imageUrl;
             }
             else
-                this.game.context.drawImage(this.image, this.x, this.y, this.size, this.size);
+                this.game.context.drawImage(this.image, this.x, this.y, this.size, this.size); */
+        };
+
+        this.updateCoordinates = function() {
+            var nextX = this.game.applySmoothCoord(this.x, this.toX);
+            var nextY = this.game.applySmoothCoord(this.y, this.toY);
+
+            if (nextX !== this.x || nextY !== this.y) {
+                if (!this.game.map.isCollidingWithWall(nextX, nextY, this.size, this.direction)){
+                    this.x = nextX;
+                    this.y = nextY;
+                }
+                else {
+                    this.x = Math.floor(this.j()) * this.size;
+                    this.y = Math.floor(this.i()) * this.size;
+                    this.toX = this.x;
+                    this.toY = this.y
+                }
+            }
+            else
+                console.log('i: ' + this.i(), 'j: ' + this.j(), this.x, this.y,);
+        }
+
+        this.calcAngle = function() { 
+            if (this.direction == 'RIGHT' && (this.x % 10 < 5))
+                return { start: 0.25, end: 1.75, direction: false };
+            if (this.direction === 'DOWN' && (this.y % 10 < 5)) 
+                return { start: 0.75, end: 2.25, direction: false };
+            if (this.direction === 'UP' && (this.y % 10 < 5)) 
+                return { start: 1.25, end: 1.75, direction: true };
+            if (this.direction === 'LEFT' && (this.x % 10 < 5))         
+                return { start: 0.75, end: 1.25, direction: true };
+            
+            return { start: 0, end: 2, direction: false };
+        };
+
+        this.checkCollision = function(x, y) {
+            
         };
     }
 };
