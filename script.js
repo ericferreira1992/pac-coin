@@ -1,9 +1,22 @@
 function PacCoin() {
-    this.blockSize = 32;
+    this.blockSize = 26;
     this.moveRate = 5;
+    this.timeToRerender = 10;
+
+    this.colors = {
+        background: '#424242', // '#000000',
+        pac: '#FACD00', // '#FFFF00',
+        wall: '#00C8ba', // '#0000FF',
+        biscuit: '#FACD00'
+    };
 
     this.map = new Map(this);
     this.pac = new Pac(this);
+    this.user = new User(this);
+
+    this.ghosts = [
+        new  Ghost(this, '01'),
+    ];
 
     this.width = this.map.lengthX * this.blockSize;
     this.height = this.map.lengthY * this.blockSize;
@@ -11,20 +24,40 @@ function PacCoin() {
     this.canvas;
     this.context;
 
+    this.coinImg = new Image();
+    this.coinImg.src = 'assets/img/sb-coin.svg';
+
     this.start = function () {
         this.createCanvas();
         this.makeListeners();
         this.runGameLoop();
-        setInterval(this.runGameLoop.bind(this), 10);
+        setInterval(this.runGameLoop.bind(this), this.timeToRerender);
     };
 
-    this.createCanvas = function () {
+    this.createCanvas = function() {
         this.canvas = document.createElement('canvas');
         this.canvas.width = this.width;
         this.canvas.height = this.height;
+        this.canvas.style.backgroundColor = this.colors.background;
+        document.body.style.backgroundColor = this.colors.background;
         document.body.prepend(this.canvas);
 
+        this.createTitle();
+
         this.context = this.canvas.getContext('2d');
+    };
+
+    this.createTitle = function() {
+        var titleHtml = '' +
+        '<div class="title" style="max-width: ' + this.width + 'px">'+
+            '<h2 style="color: ' + this.colors.biscuit + '">'+
+                'PAC-COIN'+
+            '</h2>'+
+            '<h6 style="color: #FFF">' +
+                'Catch the coins!'+
+            '</h6>'+
+        '</div>';
+        document.body.insertAdjacentHTML('afterbegin', titleHtml);
     };
 
     this.makeListeners = function () {
@@ -42,6 +75,9 @@ function PacCoin() {
         this.context.clearRect(0, 0, this.width, this.height);
         this.map.render();
         this.pac.render();
+        this.ghosts.forEach(function(ghost) {
+            ghost.render();
+        });
     };
 
     this.applySmoothCoord = function (fromPosition, toPosition) {
@@ -69,8 +105,8 @@ function PacCoin() {
             [1, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1],
             [1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1],
             [9, 9, 9, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 9, 9, 9],
-            [1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1],
-            [9, 9, 9, 9, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 9, 9, 9, 9],
+            [1, 1, 1, 1, 0, 1, 0, 1, 1, 6, 1, 1, 0, 1, 0, 1, 1, 1, 1],
+            [8, 7, 7, 7, 0, 0, 0, 1, 6, 6, 6, 1, 0, 0, 0, 7, 7, 7, 8],
             [1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1],
             [9, 9, 9, 1, 0, 1, 0, 0, 0, 9, 0, 0, 0, 1, 0, 1, 9, 9, 9],
             [1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1],
@@ -89,10 +125,18 @@ function PacCoin() {
             y: 12 * this.game.blockSize
         };
 
-        this.positionsType = {
+        this.ghostBornCoords = {
+            x: { begin: 8 * this.game.blockSize, end: 10 * this.game.blockSize },
+            y: { begin: 10 * this.game.blockSize, end: 10 * this.game.blockSize },
+        };
+
+        this.POSITION_TYPE = {
             BISCUIT: 0,
             WALL: 1,
             PILL: 2,
+            GHOST_HOUSE: 6,
+            PORTAL_PATH: 7,
+            PORTAL: 8,
             EMPTY: 9,
         };
 
@@ -135,14 +179,14 @@ function PacCoin() {
             var yMid = y + this.game.blockSize / 2;
 
             switch (block) {
-                case this.positionsType.WALL: {
+                case this.POSITION_TYPE.WALL: {
                     var direction = this.getWallDirection(i, j);
 
                     if (direction === this.WALL_DIRECTIONS.CROSS)
                         break;
 
                     this.game.context.beginPath();
-                    this.game.context.strokeStyle = '#0000FF';
+                    this.game.context.strokeStyle = this.game.colors.wall;
                     this.game.context.lineWidth = this.lineWidth;
                     this.game.context.lineCap = 'round';
 
@@ -239,17 +283,28 @@ function PacCoin() {
                     this.game.context.stroke();
                     break;
                 }
-                case this.positionsType.BISCUIT: {
-                    this.game.context.beginPath();
-                    this.game.context.fillStyle = 'white';
-                    this.game.context.fillRect(xMid, yMid, 4, 4);
+                case this.POSITION_TYPE.BISCUIT: {
+                    let indexes = this.game.map.getIndexesByCoordinates(x, y);
+                    if (!this.game.user.biscuitIsGetted(indexes.i, indexes.j)) {
+                        let biscuitSize = 6;
+                        // this.game.context.drawImage(this.game.coinImg, xMid - (biscuitSize / 2), yMid - (biscuitSize / 2), biscuitSize, biscuitSize);
+                        this.game.context.beginPath();
+                        this.game.context.fillStyle = this.game.colors.biscuit;
+                        this.game.context.arc(xMid, yMid, 2, 0, Math.PI * 2, true);
+                        this.game.context.fill();
+                    }
                     break;
                 }
-                case this.positionsType.PILL: {
-                    this.game.context.beginPath();
-                    this.game.context.fillStyle = 'white';
-                    this.game.context.arc(xMid, yMid, 8, 0, Math.PI * 2, true);
-                    this.game.context.fill();
+                case this.POSITION_TYPE.PILL: {
+                    let indexes = this.game.map.getIndexesByCoordinates(x, y);
+                    if (!this.game.user.pillIsGetted(indexes.i, indexes.j)) {
+                        let pillSize = 24;
+                        this.game.context.drawImage(this.game.coinImg, xMid - (pillSize / 2), yMid - (pillSize / 2), pillSize, pillSize);
+                        /* this.game.context.beginPath();
+                        this.game.context.fillStyle = 'white';
+                        this.game.context.arc(xMid, yMid, 8, 0, Math.PI * 2, true);
+                        this.game.context.fill(); */
+                    }
                     break;
                 }
             }
@@ -339,7 +394,7 @@ function PacCoin() {
             var onLeftBottom = this.getLeftBottomBlock(i, j);
             var onRightBottom = this.getRightBottomBlock(i, j);
 
-            var WALL = this.positionsType.WALL;
+            var WALL = this.POSITION_TYPE.WALL;
 
             // HORIZONTAL
             if ((onLeft === WALL || onRight === WALL) && (onTop !== WALL && onBottom !== WALL))
@@ -364,7 +419,7 @@ function PacCoin() {
             var onLeft = this.getLeftBlock(i, j);
             var onRight = this.getRightBlock(i, j);
 
-            var WALL = this.positionsType.WALL;
+            var WALL = this.POSITION_TYPE.WALL;
             
             if (onRight === WALL && onLeft !== WALL)
                 return this.WALL_DIRECTIONS.HORIZONTAL_RIGHT;
@@ -378,7 +433,7 @@ function PacCoin() {
             var onTop = this.getTopBlock(i, j);
             var onBottom = this.getBottomBlock(i, j);
 
-            var WALL = this.positionsType.WALL;
+            var WALL = this.POSITION_TYPE.WALL;
             
             if (onTop === WALL && onBottom !== WALL)
                 return this.WALL_DIRECTIONS.VERTICAL_TOP;
@@ -394,7 +449,7 @@ function PacCoin() {
             var onTop = this.getTopBlock(i, j);
             var onBottom = this.getBottomBlock(i, j);
 
-            var WALL = this.positionsType.WALL;
+            var WALL = this.POSITION_TYPE.WALL;
             
             if (onBottom === WALL && onLeft !== WALL && onRight !== WALL)
                 return true;
@@ -403,62 +458,62 @@ function PacCoin() {
         }
 
         this.wallIsLeftTop = function (i, j) {
-            return this.getRightBlock(i, j) === this.positionsType.WALL &&
-                this.getBottomBlock(i, j) === this.positionsType.WALL &&
+            return this.getRightBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getBottomBlock(i, j) === this.POSITION_TYPE.WALL &&
                 !this.wallIsCross(i, j);
         }
 
         this.wallIsLeftBottom = function (i, j) {
-            return this.getRightBlock(i, j) === this.positionsType.WALL &&
-                this.getTopBlock(i, j) === this.positionsType.WALL &&
+            return this.getRightBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getTopBlock(i, j) === this.POSITION_TYPE.WALL &&
                 !this.wallIsCross(i, j);
         }
 
         this.wallIsRightTop = function (i, j) {
-            return this.getLeftBlock(i, j) === this.positionsType.WALL &&
-                this.getBottomBlock(i, j) === this.positionsType.WALL &&
+            return this.getLeftBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getBottomBlock(i, j) === this.POSITION_TYPE.WALL &&
                 !this.wallIsCross(i, j);
         }
 
         this.wallIsRightBottom = function (i, j) {
-            return this.getLeftBlock(i, j) === this.positionsType.WALL &&
-                this.getTopBlock(i, j) === this.positionsType.WALL &&
+            return this.getLeftBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getTopBlock(i, j) === this.POSITION_TYPE.WALL &&
                 !this.wallIsCross(i, j);
         }
 
         this.wallIsCross = function (i, j) {
-            return this.getLeftBlock(i, j) === this.positionsType.WALL &&
-                this.getRightBlock(i, j) === this.positionsType.WALL &&
-                this.getTopBlock(i, j) === this.positionsType.WALL &&
-                this.getBottomBlock(i, j) === this.positionsType.WALL;
+            return this.getLeftBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getRightBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getTopBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getBottomBlock(i, j) === this.POSITION_TYPE.WALL;
         }
 
         this.wallIsBifurcLeft = function (i, j) {
             return !this.wallIsCross(i, j) &&
-                this.getLeftBlock(i, j) === this.positionsType.WALL &&
-                this.getTopBlock(i, j) === this.positionsType.WALL &&
-                this.getBottomBlock(i, j) === this.positionsType.WALL;
+                this.getLeftBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getTopBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getBottomBlock(i, j) === this.POSITION_TYPE.WALL;
         }
 
         this.wallIsBifurcBottom = function (i, j) {
             return !this.wallIsCross(i, j) &&
-                this.getBottomBlock(i, j) === this.positionsType.WALL &&
-                this.getLeftBlock(i, j) === this.positionsType.WALL &&
-                this.getRightBlock(i, j) === this.positionsType.WALL;
+                this.getBottomBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getLeftBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getRightBlock(i, j) === this.POSITION_TYPE.WALL;
         }
 
         this.wallIsBifurcTop = function (i, j) {
             return !this.wallIsCross(i, j) &&
-                this.getTopBlock(i, j) === this.positionsType.WALL &&
-                this.getLeftBlock(i, j) === this.positionsType.WALL &&
-                this.getRightBlock(i, j) === this.positionsType.WALL;
+                this.getTopBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getLeftBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getRightBlock(i, j) === this.POSITION_TYPE.WALL;
         }
 
         this.wallIsBifurcRight = function (i, j) {
             return !this.wallIsCross(i, j) &&
-                this.getRightBlock(i, j) === this.positionsType.WALL &&
-                this.getTopBlock(i, j) === this.positionsType.WALL &&
-                this.getBottomBlock(i, j) === this.positionsType.WALL;
+                this.getRightBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getTopBlock(i, j) === this.POSITION_TYPE.WALL &&
+                this.getBottomBlock(i, j) === this.POSITION_TYPE.WALL;
         }
 
         this.getRightBlock = function (i, j) {
@@ -573,8 +628,8 @@ function PacCoin() {
             else if (direction === 'LEFT')
                 x -= size;
 
-            var i = Math.min(Math.floor(y / size) + (y % size > 5 ? 1 : 0), this.matriz.length - 1);
-            var j = Math.min(Math.floor(x / size) + (x % size > 5 ? 1 : 0), this.matriz[0].length - 1);
+            var i = Math.max(Math.min(Math.floor(y / size) + (y % size > 5 ? 1 : 0), this.matriz.length - 1), 0);
+            var j = Math.max(Math.min(Math.floor(x / size) + (x % size > 5 ? 1 : 0), this.matriz[0].length - 1), 0);
 
             return { i, j };
         }
@@ -597,31 +652,79 @@ function PacCoin() {
 
         this.isCollidingWithWall = function(x, y, size, direction) {
             var indexes = this.getIndexesByCoordinates(x, y, size, direction);
-            if (indexes.i >= this.matriz.length || indexes.j >= this.matriz[0].length)
-                // return { type: this.positionsType.WALL, i: indexes.i, j: indexes.j };
-                return true;
-            else {
-                var blockValue = this.matriz[indexes.i][indexes.j];
-                return blockValue === this.positionsType.WALL;
-            }
+            var block = this.matriz[indexes.i][indexes.j];
+            return block === this.POSITION_TYPE.WALL;
         }
 
-        this.xCoordinateIsEnd = function(x, size) {
-            var coords = this.getIndexesByCoordinates(x, 0, size, 'RIGHT');
-            return coords.j >= (this.matriz.length - 1);
+        this.pacCanGo = function(x, y, size, direction) {
+            var indexes = this.getIndexesByCoordinates(x, y, size, direction);
+            var block = this.matriz[indexes.i][indexes.j];
+            return [
+                this.POSITION_TYPE.WALL,
+                this.POSITION_TYPE.GHOST_HOUSE
+            ].indexOf(block) >= 0;
         }
 
-        this.xCoordinateIsBegin = function(x) {
-            return x <= 0;
+        this.xCoordinateIsEnd = function(x, y) {
+            var indexes = this.getIndexesByCoordinates(x, y, null, 'RIGHT');
+            var block = this.matriz[indexes.i][indexes.j];
+            return indexes.j >= (this.matriz[0].length - 1) && block !== this.POSITION_TYPE.PORTAL;
+        }
+
+        this.xCoordinateIsBegin = function(x, y) {
+            var indexes = this.getIndexesByCoordinates(x, y, null, 'LEFT');
+            var block = this.matriz[indexes.i][indexes.j];
+            return indexes.j <= 0 && block !== this.POSITION_TYPE.PORTAL;
         }
 
         this.yCoordinateIsEnd = function(y, size) {
-            var coords = this.getIndexesByCoordinates(0, y, size, 'DOWN');
-            return coords.i >= (this.matriz[0].length - 1);
+            var indexes = this.getIndexesByCoordinates(0, y, size, 'DOWN');
+            return indexes.i >= (this.matriz.length - 1) && block !== this.POSITION_TYPE.PORTAL;
         }
 
         this.yCoordinateIsBegin = function(y) {
             return y <= 0;
+        }
+
+        this.biscuitGettedByCoordinates = function(x, y, size, direction) {
+            var indexes = this.getIndexesByCoordinates(x, y, size);
+            var block = this.matriz[indexes.i][indexes.j];
+            let isBiscuit = block === this.POSITION_TYPE.BISCUIT;
+
+            var directionInX = direction === 'LEFT' || direction === 'RIGHT';
+            var directionInY = direction === 'UP' || direction === 'DOWN';
+
+            if ((direction === 'LEFT' || (direction === 'RIGHT' && x >= indexes.j * size)) || (direction === 'UP' || (direction === 'DOWN' && y >= indexes.i * size))) {
+                if (direction === 'UP')
+                    y -= size;
+                else if (direction === 'LEFT')
+                    x -= size;
+    
+                if (isBiscuit)
+                    isBiscuit = (directionInX && x % size >= 5) || (directionInY && y % size >= 5);
+                
+                return isBiscuit;
+            }
+
+        }
+
+        this.pillGettedByCoordinates = function(x, y, size, direction) {
+            var indexes = this.getIndexesByCoordinates(x, y, size);
+            var block = this.matriz[indexes.i][indexes.j];
+            let isPill = block === this.POSITION_TYPE.PILL;
+
+            if (direction === 'UP')
+                y -= size;
+            else if (direction === 'LEFT')
+                x -= size;
+
+            var directionInX = direction === 'LEFT' || direction === 'RIGHT';
+            var directionInY = direction === 'UP' || direction === 'DOWN';
+
+            if (isPill)
+                isPill = (directionInX && x % size >= 5) || (directionInY && y % size >= 5);
+            
+            return isPill;
         }
     }
 
@@ -635,74 +738,169 @@ function PacCoin() {
         this.y = this.game.map.pacBornCoords.y;
         this.toX = this.x;
         this.toY = this.y;
-        this.i = function() { return this.y / this.size; }; //this.game.map.getPositionIByCoord(this.y, this.size); };
-        this.j = function() { return this.x / this.size; };// this.game.map.getPositionJByCoord(this.x, this.size); };
+        this.directionAfterEnd = null;
         this.direction = 'NONE';
 
+        this.enteringPortal = false;
+        this.enteringPortalEnding = false;
+        
+        this.i = function(round = false) {
+            var size = this.size;
+            var y = this.y;
+            
+            if (round && this.direction === 'UP')
+                y -= size;
+            
+            var i = Math.floor(y / size) + ((round && y % size) > 5 ? 1 : 0);
+            return Math.min( i, this.game.map.matriz.length - 1);
+        };
+        this.j = function(round = false) {
+            var size = this.size;
+            var x = this.x;
+            
+            if (round && this.direction === 'LEFT')
+                x -= size;
+            
+            var j = Math.floor(x / size) + ((round && x % size) > 5 ? 1 : 0);
+            return Math.min(j, this.game.map.matriz[0].length - 1);
+        };
+
         this.moveX = function (direction) {
+            var changeOrientation = this.direction !== 'LEFT' && this.direction !== 'RIGHT';
             var changeDirection = (this.direction === 'LEFT' || this.direction === 'RIGHT') && this.direction !== direction;
-            this.direction = direction;
 
-            var currentX = this.x;
-
-            if ((this.direction === 'LEFT' && !this.game.map.xCoordinateIsBegin(currentX)) ||
-                (this.direction === 'RIGHT' && !this.game.map.xCoordinateIsEnd(currentX)))
-            {
-                var currentIndexes = this.game.map.getIndexesByCoordinates(currentX, this.y, this.size);
-                var moveToJ = currentIndexes.j + (this.direction === 'RIGHT' ? 1 : 0);
-                var _toX = moveToJ * this.size;
-
-                if (!this.game.map.isCollidingWithWall(_toX, this.y, this.size))
-                    this.toX = _toX + (direction === 'LEFT' ? -this.size : 0);
-                else
-                    this.toX =  currentIndexes.j * this.size;
-
+            if (changeOrientation && this.y !== this.toY) {
+                this.toY = Math.floor(this.i(true)) * this.size;
+                this.directionAfterEnd = direction;
+                return;
             }
-            this.toY = this.y;
+            else
+                this.directionAfterEnd = null;
+
+            if (!changeOrientation || this.y === this.toY) {
+                this.direction = direction;
+
+                if (changeDirection)
+                    this.toX = this.x;
+
+                var currentX = this.x;
+
+                if ((this.direction === 'LEFT' && !this.game.map.xCoordinateIsBegin(currentX, this.y)) ||
+                    (this.direction === 'RIGHT' && !this.game.map.xCoordinateIsEnd(currentX, this.y)))
+                {
+                    var currentIndexes = this.game.map.getIndexesByCoordinates(currentX, this.y, this.size, this.direction);
+                    var moveToJ = currentIndexes.j + (this.direction === 'RIGHT' ? 1 : 0); 
+                    var _toX = moveToJ * this.size;
+
+                    if (!this.game.map.pacCanGo(_toX, this.y, this.size)) {
+                        if (currentX > this.size || currentX === 0)
+                            _toX += direction === 'LEFT' ? -this.size : 0;
+
+                        if (this.x === this.toX && _toX > 0)
+                            _toX += this.direction === 'LEFT' ? -this.size : this.size;
+
+                        this.enteringPortal = this.direction === 'LEFT' ? (_toX < 0) : (_toX > this.game.width);
+
+                        this.toX = _toX;
+                    }
+                    else if (changeDirection)
+                        this.toX =  currentIndexes.j * this.size;
+                }
+                this.toY = this.y;
+            }
         };
         this.moveY = function (direction) {
+            var changeOrientation = this.direction !== 'UP' && this.direction !== 'DOWN';
             var changeDirection = (this.direction === 'DOWN' || this.direction === 'UP') && this.direction !== direction;
-            this.direction = direction;
 
-            var currentY = this.y;
-
-            if ((this.direction === 'UP' && !this.game.map.yCoordinateIsBegin(currentY)) ||
-                (this.direction === 'DOWN' && !this.game.map.yCoordinateIsEnd(currentY)))
-            {
-                var currentIndexes = this.game.map.getIndexesByCoordinates(this.x, currentY, this.size);
-                var moveToI = currentIndexes.i + (this.direction === 'DOWN' ? 1 : 0);
-                var _toY = moveToI * this.size;
-
-                if (!this.game.map.isCollidingWithWall(this.x, _toY, this.size))
-                    this.toY = _toY + (direction === 'UP' ? -this.size : 0);
-                else
-                    this.toY =  currentIndexes.i * this.size;
+            if (changeOrientation && this.x !== this.toX) {
+                this.toX = Math.floor(this.j(true)) * this.size;
+                this.directionAfterEnd = direction;
+                return;
             }
-            this.toX = this.x;
+            else
+                this.directionAfterEnd = null;
+
+            if (!changeOrientation || this.x === this.toX) {
+                this.direction = direction;
+
+                if (changeDirection)
+                    this.toY = this.y;
+
+                var currentY = this.y;
+    
+                if ((this.direction === 'UP' && !this.game.map.yCoordinateIsBegin(currentY)) ||
+                    (this.direction === 'DOWN' && !this.game.map.yCoordinateIsEnd(currentY)))
+                {
+                    var currentIndexes = this.game.map.getIndexesByCoordinates(this.x, currentY, this.size, this.direction);
+                    var moveToI = currentIndexes.i + (this.direction === 'DOWN' ? 1 : 0);
+                    var _toY = moveToI * this.size;
+
+                    if (!this.game.map.pacCanGo(this.x, _toY, this.size, this.direction)) {
+                        if (currentY > this.size || currentY === 0)
+                            _toY = _toY + (direction === 'UP' ? -this.size : 0);
+
+                        if (this.y === this.toY && _toY > 0)
+                            _toY += this.direction === 'UP' ? -this.size : this.size;
+
+                        this.enteringPortal = this.direction === 'LEFT' ? (_toY < 0) : (_toY > this.game.height);
+
+                        this.toY = _toY;
+                    }
+                    else if (changeDirection)
+                        this.toY =  currentIndexes.i * this.size;
+                }
+                this.toX = this.x;
+            }
+        };
+
+        this.getDirectionByCode = function(keyCode) {
+            switch(keyCode) {
+                case 37: return 'LEFT';
+                case 38: return 'UP';
+                case 39: return 'RIGHT';
+                case 40: return 'DOWN';
+                default: return 'NONE';
+            }
+        };
+
+        this.directionIsX = function(direction) {
+            return direction === 'LEFT' || direction === 'RIGHT';
+        };
+
+        this.directionIsY = function(direction) {
+            return direction === 'UP' || direction === 'DOWN';
         };
 
         this.onKeydown = function (event) {
-            if (event.keyCode === 38) {
-                this.moveY('UP');
-            }
-            else if (event.keyCode === 40) {
-                this.moveY('DOWN');
-            }
-            else if (event.keyCode === 37) {
-                this.moveX('LEFT');
-            }
-            else if (event.keyCode === 39) {
-                this.moveX('RIGHT');
+            if ([37, 38, 39, 40].indexOf(event.keyCode) >= 0 && !this.enteringPortal) {
+                var direction = this.getDirectionByCode(event.keyCode);
+                if (event.keyCode === 38) {
+                    this.moveY('UP');
+                }
+                else if (event.keyCode === 40) {
+                    this.moveY('DOWN');
+                }
+                else if (event.keyCode === 37) {
+                    this.moveX('LEFT');
+                }
+                else if (event.keyCode === 39) {
+                    this.moveX('RIGHT');
+                }
             }
         };
 
         this.onKeyup = function (event) {
-            /* if ([37, 38, 39, 40].indexOf(event.keyCode) >= 0) {
-                if (this.x !== this.toX) {
-                    var diffX = Math.floor(Math.abs(this.x - this.toX) * .5);
-                    this.toX += diffX * (this.x < this.toX ? -1 : 1);
+            if ([37, 38, 39, 40].indexOf(event.keyCode) >= 0) {
+                if (!this.enteringPortal) {
+                    var direction = this.getDirectionByCode(event.keyCode);
+
+                    if (this.directionIsX(direction))
+                        this.stopMovimentX(direction);
+                    else if (this.directionIsY(direction))
+                        this.stopMovimentY(direction);
                 }
-            } */
+            }
         };
 
         this.render = function () {
@@ -712,7 +910,7 @@ function PacCoin() {
             this.game.context.beginPath();
             this.game.context.moveTo(this.x + (this.size / 2),
             this.y + (this.size / 2));
-            this.game.context.fillStyle = '#FFFF00';
+            this.game.context.fillStyle = this.game.colors.pac;
             this.game.context.arc(
                 this.x + (this.size / 2),
                 this.y + (this.size / 2),
@@ -734,41 +932,525 @@ function PacCoin() {
                 this.game.context.drawImage(this.image, this.x, this.y, this.size, this.size); */
         };
 
+        this.stopMovimentX = function(directionToStop) {
+            if (directionToStop === this.direction)
+                this.toX = Math.max(Math.min(Math.floor(this.j(true)) * this.size, this.game.width - this.size), 0);
+        };
+
+        this.stopMovimentY = function(directionToStop) {
+            if (directionToStop === this.direction)
+                this.toY = Math.max(Math.min(Math.floor(this.i(true)) * this.size, this.game.height - this.size), 0);
+        };
+
         this.updateCoordinates = function() {
             var nextX = this.game.applySmoothCoord(this.x, this.toX);
             var nextY = this.game.applySmoothCoord(this.y, this.toY);
 
-            if (nextX !== this.x || nextY !== this.y) {
-                if (!this.game.map.isCollidingWithWall(nextX, nextY, this.size, this.direction)){
-                    this.x = nextX;
-                    this.y = nextY;
+            if (!this.enteringPortal) {
+                if (nextX !== this.x || nextY !== this.y) {
+                    if (!this.game.map.pacCanGo(nextX, nextY, this.size, this.direction)){
+                        this.x = nextX;
+                        this.y = nextY;
+    
+                        this.checkColisions();
+                    }
+                    else {
+                        this.x = Math.floor(this.j()) * this.size;
+                        this.y = Math.floor(this.i()) * this.size;
+                        this.toX = this.x;
+                        this.toY = this.y
+                    }
                 }
                 else {
-                    this.x = Math.floor(this.j()) * this.size;
-                    this.y = Math.floor(this.i()) * this.size;
-                    this.toX = this.x;
-                    this.toY = this.y
+                    if (this.directionAfterEnd) {
+                        if (this.directionAfterEnd === 'LEFT' || this.directionAfterEnd === 'RIGHT')
+                            this.moveX(this.directionAfterEnd);
+                        else
+                            this.moveY(this.directionAfterEnd);
+                    }
                 }
             }
-            else
-                console.log('i: ' + this.i(), 'j: ' + this.j(), this.x, this.y,);
+            else {
+                if (nextX !== this.x || nextY !== this.y) {
+                    this.x = nextX;
+                    this.y = nextY;
+
+                    if (this.x === this.toX && this.y === this.toY) {
+
+                        if (!this.enteringPortalEnding) {
+                            this.enteringPortalEnding = true;
+                            if (this.direction === 'RIGHT') {
+                                this.x = -this.size;
+                                this.toX = 0;
+                            }
+                            else if (this.direction === 'LEFT') {
+                                this.x = this.game.width;
+                                this.toX = this.game.width - this.size;
+                            }
+                            else if (this.direction === 'DOWN') {
+                                this.y = -this.size;
+                                this.toY = 0;
+                            }
+                            else if (this.direction === 'LEFT') {
+                                this.y = this.game.height;
+                                this.toY = this.game.height - this.size;
+                            }
+                        }
+                        else{
+                            this.enteringPortal = false;
+                            this.enteringPortalEnding = false;
+                        }
+                    }
+                }
+            }
+        };
+
+        this.checkColisions = function() {
+            var indexes = this.game.map.getIndexesByCoordinates(this.x, this.y, this.size);
+            if (this.game.map.biscuitGettedByCoordinates(this.x, this.y, this.size, this.direction)) {
+                this.game.user.setBiscuitGetted(indexes.i, indexes.j);
+            }
+            else if (this.game.map.pillGettedByCoordinates(this.x, this.y, this.size, this.direction)) {
+                this.game.user.setPillGetted(indexes.i, indexes.j);
+            }
         }
 
         this.calcAngle = function() { 
-            if (this.direction == 'RIGHT' && (this.x % 10 < 5))
+            if (this.direction === 'RIGHT' && (this.x % 10 < 5 || this.x == this.toX))
                 return { start: 0.25, end: 1.75, direction: false };
-            if (this.direction === 'DOWN' && (this.y % 10 < 5)) 
+            if (this.direction === 'DOWN' && (this.y % 10 < 5 || this.y == this.toY)) 
                 return { start: 0.75, end: 2.25, direction: false };
-            if (this.direction === 'UP' && (this.y % 10 < 5)) 
+            if (this.direction === 'UP' && (this.y % 10 < 5 || this.y == this.toY)) 
                 return { start: 1.25, end: 1.75, direction: true };
-            if (this.direction === 'LEFT' && (this.x % 10 < 5))         
+            if (this.direction === 'LEFT' && (this.x % 10 < 5 || this.x == this.toX))         
                 return { start: 0.75, end: 1.25, direction: true };
             
             return { start: 0, end: 2, direction: false };
         };
+    }
 
-        this.checkCollision = function(x, y) {
-            
+    function User(game) {
+        this.game = game;
+
+        this.biscuitsGettedCoords;
+        this.pillsGettedCoords;
+
+        this.reset = function() {
+            this.biscuitsGettedCoords = [];
+            this.pillsGettedCoords = [];
         };
+
+        this.setBiscuitGetted = function(i, j) {
+            if (!this.biscuitIsGetted(i, j)) {
+                this.biscuitsGettedCoords.push({ i, j });
+                this.updateScores();
+            }
+        }
+
+        this.setPillGetted = function(i, j) {
+            if (!this.pillIsGetted(i, j)) {
+                this.pillsGettedCoords.push({ i, j });
+                this.updateScores();
+            }
+        }
+
+        this.biscuitIsGetted = function(i, j) {
+            var exists = false;
+
+            for (var coord of this.biscuitsGettedCoords) {
+                if (coord.i === i && coord.j === j) {
+                    exists = true;
+                    break;
+                }
+            }
+
+            return exists;
+        }
+
+        this.pillIsGetted = function(i, j) {
+            var exists = false;
+
+            for (var coord of this.pillsGettedCoords) {
+                if (coord.i === i && coord.j === j) {
+                    exists = true;
+                    break;
+                }
+            }
+
+            return exists;
+        }
+
+        this.updateScores = function() {
+            this.biscuitsGetted = this.biscuitsGettedCoords.length;
+            this.pillsGetted = this.pillsGettedCoords.length;
+        };
+
+        this.reset();
+    }
+
+    function Ghost(game, name) {
+        this.game = game;
+        this.name = name;
+
+        this.size = this.game.blockSize;
+
+        this.bornCoordX = this.game.map.ghostBornCoords.x;
+        this.bornCoordY = this.game.map.ghostBornCoords.y;
+        this.bornCoordI = { begin: this.bornCoordY.begin / this.size, end: this.bornCoordY.end / this.size };
+        this.bornCoordJ = { begin: this.bornCoordX.begin / this.size, end: this.bornCoordX.end / this.size };
+
+        this.STATES = {
+            WAITING: 'WAITING',
+            STOP_WAITING: 'STOP_WAITING',
+            HUNTERING: 'HUNTERING',
+            STUNNED: 'STUNNED',
+            DEAD_GO_HOME: 'DEAD_GO_HOME',
+            DEAD: 'DEAD',
+        };
+
+        this.DIRECTIONS = {
+            NONE: 'NONE',
+            LEFT: 'LEFT',
+            RIGHT: 'RIGHT',
+            UP: 'UP',
+            DOWN: 'DOWN',
+        };
+
+        this.imagesPerState = {
+            WAITING: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' },
+            STOP_WAITING: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' },
+            HUNTERING: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' },
+            STUNNED: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' },
+            DEAD_GO_HOME: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' },
+            DEAD: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' }
+        };
+
+        this.x = 0;
+        this.y = 0;
+        this.toX = this.x;
+        this.toY = this.y;
+
+        this.ghostNumber = function() { return parseInt(this.name); }
+
+        this.direction = this.DIRECTIONS.NONE;
+        this.state = this.STATES.WAITING;
+
+        this.image = new Image();
+        this.image.src =  this.imagesPerState[this.state].normal;
+
+        this.waitingTime = 5000 + ((this.ghostNumber() - 1) * 2000);
+        this.howLongIsTheWait = 0;
+
+        this.destinationToGo = { i: 0, j: 0 };
+        
+        this.i = function(round = false) {
+            var size = this.size;
+            var y = this.y;
+            
+            if (round && this.direction === 'UP')
+                y -= size;
+            
+            var i = Math.floor(y / size) + ((round && y % size) > 5 ? 1 : 0);
+            return Math.min( i, this.game.map.matriz.length - 1);
+        };
+        this.j = function(round = false, direction = null) {
+            var size = this.size;
+            var x = this.x;
+            
+            if (!direction)
+                direction = this.direction;
+
+            if (round && this.direction === 'LEFT')
+                x -= size;
+            
+            var j = Math.floor(x / size) + ((round && x % size) > 5 ? 1 : 0);
+            return Math.min(j, this.game.map.matriz[0].length - 1);
+        };
+
+        this.initialize = function(){
+            var initI = Helper.randomInterval(this.bornCoordI.begin, this.bornCoordI.end);
+            var initJ = Helper.randomInterval(this.bornCoordJ.begin, this.bornCoordJ.end);
+    
+            this.x = initJ * this.size;
+            this.y = initI * this.size;
+            this.toX = this.x;
+            this.toY = this.y;
+    
+            if (this.bornCoordI.begin !== this.bornCoordI.end) {
+                if (initI > this.bornCoordI.begin)
+                    this.goToTheDirection(this.DIRECTIONS.UP);
+                else
+                    this.goToTheDirection(this.DIRECTIONS.DOWN);
+            }
+            else if (this.bornCoordJ.begin !== this.bornCoordJ.end) {
+                if (initJ > this.bornCoordJ.begin)
+                    this.goToTheDirection(this.DIRECTIONS.LEFT);
+                else
+                    this.goToTheDirection(this.DIRECTIONS.RIGHT);
+            }
+        };
+
+        this.render = function() {
+            this.updateWaitingTime();
+            this.updateCoordinates();
+
+            this.game.context.drawImage(this.image, this.x, this.y, this.size, this.size);
+        };
+
+        this.updateCoordinates = function() {
+            var nextX = this.x;
+            var nextY = this.y;
+
+            if (this.x !== this.toX && this.directionIsX())
+                nextX = this.game.applySmoothCoord(this.x, this.toX);
+            else if (this.x !== this.toX && this.y === this.toY) {
+                this.direction = this.x < this.toX ? this.DIRECTIONS.RIGHT : this.DIRECTIONS.LEFT;
+                nextX = this.game.applySmoothCoord(this.x, this.toX);
+            }
+            else if (this.y !== this.toY && this.directionIsY())
+                nextY = this.game.applySmoothCoord(this.y, this.toY);
+            else if (this.y !== this.toY && this.x === this.toX) {
+                this.direction = this.y < this.toY ? this.DIRECTIONS.DOWN : this.DIRECTIONS.UP;
+                nextY = this.game.applySmoothCoord(this.y, this.toY);
+            }
+            
+            switch(this.state) {
+                case this.STATES.WAITING: {
+                    if (nextX !== this.x || nextY !== this.y)
+                        this.goToNextCoords(nextX,nextY);
+                    else {
+
+                        if (this.howLongIsTheWait >= this.waitingTime)
+                            this.stopWaitingAndGoHunting();
+                        else {
+                            var limit = {
+                                x: { min: this.bornCoordJ.begin * this.size, max: this.bornCoordJ.end * this.size },
+                                y: { min: this.bornCoordI.begin * this.size, max: this.bornCoordI.end * this.size }
+                            }
+    
+                            if (this.canGoInTheDirection(this.direction, limit))
+                                this.goToTheDirection(this.direction);
+                            else {
+                                var direction = this.getReverseDirection();
+                                
+                                if (this.canGoInTheDirection(direction, limit))
+                                    this.goToTheDirection(direction);
+                                else {
+                                    direction = this.getReverseOrientation();
+    
+                                    if (this.canGoInTheDirection(direction, limit))
+                                        this.goToTheDirection(direction);
+                                    else {
+                                        var direction = this.getReverseDirection();
+    
+                                        if (this.canGoInTheDirection(direction, limit))
+                                            this.goToTheDirection(direction);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    break;
+                }
+                case this.STATES.STOP_WAITING: {
+                    if (nextX !== this.x || nextY !== this.y)
+                        this.goToNextCoords(nextX, nextY);
+                    else
+                        this.goHunting();
+                    break;
+                }
+                case this.STATES.HUNTERING: {
+                    if (nextX !== this.x || nextY !== this.y)
+                        this.goToNextCoords(nextX, nextY);
+                    else {
+                        this.destinationToGo = {
+                            i: this.game.pac.i(true),
+                            j: this.game.pac.j(true)
+                        };
+
+                        this.goToDestination();
+                    }
+                    break;
+                }
+                case this.STATES.STUNNED: {
+                    break;
+                }
+                case this.STATES.DEAD_GO_HOME: {
+                    break;
+                }
+                case this.STATES.DEAD: {
+                    break;
+                }
+            }
+        }
+
+        this.goToNextCoords = function(nextX, nextY) {
+            if (!this.game.map.isCollidingWithWall(nextX, nextY, this.size)){
+                this.x = nextX;
+                this.y = nextY;
+            }
+            else {
+                this.x = Math.floor(this.j()) * this.size;
+                this.y = Math.floor(this.i()) * this.size;
+                this.toX = this.x;
+                this.toY = this.y;
+            }
+        };
+
+        this.goToTheDirection = function(direction) {
+            this.direction = direction;
+
+            if (direction === this.DIRECTIONS.UP)
+                this.toY = this.y - this.size;
+            else if (direction === this.DIRECTIONS.DOWN)
+                this.toY = this.y + this.size;
+            else if (direction === this.DIRECTIONS.LEFT)
+                this.toX = this.x - this.size;
+            else if (direction === this.DIRECTIONS.RIGHT)
+                this.toX = this.x + this.size;
+        }
+
+        this.canGoInTheDirection = function(direction, limit) {
+            var x = this.x;
+            var y = this.y;
+            if (direction === this.DIRECTIONS.UP)
+                y = (this.i(true, direction)) * this.size;
+            else if (direction === this.DIRECTIONS.DOWN)
+                y = (this.i(true, direction) + 1) * this.size;
+            else if (direction === this.DIRECTIONS.LEFT)
+                x = (this.j(true, direction)) * this.size;
+            else if (direction === this.DIRECTIONS.RIGHT)
+                x = (this.j(true, direction) + 1) * this.size;
+
+            if (limit) {
+                if (x < limit.x.min || x > limit.x.max)
+                    return false;
+                if (y < limit.y.min || y > limit.y.max)
+                    return false;
+            }
+
+            return !this.game.map.isCollidingWithWall(x, y, this.size);
+        }
+
+        this.stopWaitingAndGoHunting = function() {
+            this.state = this.STATES.STOP_WAITING;
+            this.image.src = this.imagesPerState[this.state].normal;
+
+            // TRY TO EXIT THE Y AXIS
+            for (var i = this.bornCoordI.begin; i <= this.bornCoordI.end; i = this.bornCoordI.end) {
+                for (var j = this.bornCoordJ.begin; j <= this.bornCoordJ.end; j++) {
+                    var direction = null;
+                    var rate = 2;
+
+                    if (i === this.bornCoordI.begin && this.game.map.getTopBlock(i, j) !== this.game.map.POSITION_TYPE.WALL) {
+                        rate *= -1;
+                        direction = this.DIRECTIONS.UP;
+                    }
+                    else if (i === this.bornCoordI.end && this.game.map.getBottomBlock(i, j) !== this.game.map.POSITION_TYPE.WALL)
+                        direction = this.DIRECTIONS.DOWN;
+
+                    if (direction) {
+                        this.toX = j * this.size;
+                        this.toY = (i + rate) * this.size;
+
+                        if (this.x !== this.toX)
+                            this.direction = this.x < this.toX ? this.DIRECTIONS.RIGHT : this.DIRECTIONS.LEFT;
+                        else
+                            this.direction = direction;
+                        return;
+                    }
+                }   
+            }
+
+            // TRY TO EXIT THE X AXIS
+            for (var j = this.bornCoordJ.begin; j <= this.bornCoordJ.end; j = this.bornCoordJ.end) {
+                for (var i = this.bornCoordI.begin; i <= this.bornCoordI.end; i++) {
+                    var direction = null;
+                    var rate = 2;
+
+                    if (j === this.bornCoordJ.begin && this.game.map.getLeftBlock(i, j) !== this.game.map.POSITION_TYPE.WALL) {
+                        direction = this.DIRECTIONS.LEFT;
+                        rate *= -1;
+                    }
+                    else if (j === this.bornCoordJ.end && this.game.map.getRightBlock(i, j) !== this.game.map.POSITION_TYPE.WALL)
+                        direction = this.DIRECTIONS.RIGHT;
+
+                    if (direction) {
+                        this.toX = (j + rate) * this.size;
+                        this.toY = i * this.size;
+
+
+                        if (this.y !== this.toY)
+                            this.direction = this.y < this.toY ? this.DIRECTIONS.RIGHT : this.DIRECTIONS.LEFT;
+                        else
+                            this.direction = direction;
+                        return;
+                    }
+                }   
+            }
+        };
+
+        this.goToDestination = function() {
+            if (this.destinationToGo && this.destinationToGo.i && this.destinationToGo.j) {
+                var detination = this.destinationToGo;
+                var destX = detination.j * this.size;
+                var destY = detination.i * this.size;
+
+                var diffDistanceX = Math.abs(this.x - destX);
+                var diffDistanceY = Math.abs(this.y - destY);
+
+                if (diffDistanceX > diffDistanceY) {
+                    
+                }
+            }
+        };
+
+        this.goHunting = function() {
+            this.state = this.STATES.HUNTERING;
+            this.image.src = this.imagesPerState[this.state].normal;
+        };
+
+        this.updateWaitingTime = function() {
+            if (this.state === this.STATES.WAITING)
+                this.howLongIsTheWait += this.game.timeToRerender;
+            else
+                this.howLongIsTheWait = 0;
+        }
+
+        this.directionIsX = function() { return this.direction === 'LEFT' || this.direction === 'LEFT'; };
+        this.directionIsY = function() { return this.direction === 'UP' || this.direction === 'DOWN'; };
+        this.getReverseDirection = function() {
+            if (this.direction === 'UP')
+                return 'DOWN';
+            if (this.direction === 'DOWN')
+                return 'UP';
+            if (this.direction === 'LEFT')
+                return 'RIGHT';
+            if (this.direction === 'RIGHT')
+                return 'LEFT';
+
+            return 'NONE';
+        };
+        this.getReverseOrientation = function() {
+            if (this.direction === 'UP')
+                return 'LEFT';
+            if (this.direction === 'DOWN')
+                return 'RIGHT';
+            if (this.direction === 'LEFT')
+                return 'UP';
+            if (this.direction === 'RIGHT')
+                return 'DOWN';
+
+            return 'NONE';
+        };
+
+        this.initialize();
     }
 };
+
+Helper = {
+    randomInterval: function(min, max) {
+        return Math.floor(Math.random() * (max - min + 1) + min);
+    }
+}

@@ -2,6 +2,7 @@ html {
     display: table;
     width: 100vw;
     height: 100vh;
+    font-family: 'Courier New', Courier, monospace;
 }
 
 html body {
@@ -12,5 +13,21 @@ html body {
 body > canvas {
     display: block;
     margin: auto;
-    background: #000000;
+}
+
+body > .title {
+    display: block;
+    margin: auto;
+    text-align: center;
+}
+
+body > .title > h2 {
+    margin: 0;
+    font-size: 45px;
+    line-height: 1;
+}
+body > .title > h6 {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1;
 }
