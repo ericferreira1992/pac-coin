@@ -16,6 +16,9 @@ function PacCoin() {
 
     this.ghosts = [
         new  Ghost(this, '01'),
+        new  Ghost(this, '02'),
+        new  Ghost(this, '03'),
+        new  Ghost(this, '04'),
     ];
 
     this.width = this.map.lengthX * this.blockSize;
@@ -80,9 +83,10 @@ function PacCoin() {
         });
     };
 
-    this.applySmoothCoord = function (fromPosition, toPosition) {
+    this.applySmoothCoord = function (fromPosition, toPosition, customRate) {
+        var rate = customRate ? customRate : 1;
         if (fromPosition !== toPosition) {
-            var newPosition = fromPosition + ((fromPosition < toPosition) ? 1 : -1);
+            var newPosition = fromPosition + ((fromPosition < toPosition) ? rate : -rate);
             if (fromPosition < toPosition && newPosition > toPosition)
                 return toPosition;
             else if (fromPosition > toPosition && newPosition < toPosition)
@@ -620,6 +624,15 @@ function PacCoin() {
                 return -1;
         }
 
+        this.getBlockByIndexes = function(i, j) {
+            return this.matriz[i][j];
+        }
+
+        this.getBlockByCoordinates = function(x, y, size, direction) {
+            var indexes = this.getIndexesByCoordinates(x, y, size, direction);
+            return this.matriz[indexes.i][indexes.j];
+        }
+
         this.getIndexesByCoordinates = function(x, y, size, direction) {
             if (!size) size = this.game.blockSize;
 
@@ -865,10 +878,11 @@ function PacCoin() {
         };
 
         this.directionIsX = function(direction) {
+            if (!direction) direction = this.direction;
             return direction === 'LEFT' || direction === 'RIGHT';
         };
-
         this.directionIsY = function(direction) {
+            if (!direction) direction = this.direction;
             return direction === 'UP' || direction === 'DOWN';
         };
 
@@ -1102,7 +1116,7 @@ function PacCoin() {
         this.STATES = {
             WAITING: 'WAITING',
             STOP_WAITING: 'STOP_WAITING',
-            HUNTERING: 'HUNTERING',
+            HUNTING: 'HUNTING',
             STUNNED: 'STUNNED',
             DEAD_GO_HOME: 'DEAD_GO_HOME',
             DEAD: 'DEAD',
@@ -1119,7 +1133,7 @@ function PacCoin() {
         this.imagesPerState = {
             WAITING: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' },
             STOP_WAITING: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' },
-            HUNTERING: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' },
+            HUNTING: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' },
             STUNNED: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' },
             DEAD_GO_HOME: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' },
             DEAD: { normal: 'assets/img/ghosts/' + this.name + '.png', dead: 'assets/img/ghosts/' + this.name + '.png' }
@@ -1138,10 +1152,13 @@ function PacCoin() {
         this.image = new Image();
         this.image.src =  this.imagesPerState[this.state].normal;
 
-        this.waitingTime = 5000 + ((this.ghostNumber() - 1) * 2000);
+        this.leaveWaitingTime = 5000 + ((this.ghostNumber() - 1) * 4000);
+        this.renderWaitingTime = ((this.ghostNumber() - 1) * 4000);
         this.howLongIsTheWait = 0;
 
-        this.destinationToGo = { i: 0, j: 0 };
+        this.destinationToGo = null;
+        this.lastDestinationToGo = null;
+        this.arrayDirectionsToGo = [];
         
         this.i = function(round = false) {
             var size = this.size;
@@ -1191,27 +1208,31 @@ function PacCoin() {
         };
 
         this.render = function() {
-            this.updateWaitingTime();
-            this.updateCoordinates();
+            this.updaterenderWaitingTime();
 
-            this.game.context.drawImage(this.image, this.x, this.y, this.size, this.size);
+            if (this.howLongIsTheWait >= this.renderWaitingTime) {
+                this.updateCoordinates();
+                this.game.context.drawImage(this.image, this.x, this.y, this.size, this.size);
+            }
         };
 
         this.updateCoordinates = function() {
             var nextX = this.x;
             var nextY = this.y;
 
+            var rate = .8;
+
             if (this.x !== this.toX && this.directionIsX())
-                nextX = this.game.applySmoothCoord(this.x, this.toX);
+                nextX = this.game.applySmoothCoord(this.x, this.toX, rate);
             else if (this.x !== this.toX && this.y === this.toY) {
                 this.direction = this.x < this.toX ? this.DIRECTIONS.RIGHT : this.DIRECTIONS.LEFT;
-                nextX = this.game.applySmoothCoord(this.x, this.toX);
+                nextX = this.game.applySmoothCoord(this.x, this.toX, rate);
             }
             else if (this.y !== this.toY && this.directionIsY())
-                nextY = this.game.applySmoothCoord(this.y, this.toY);
+                nextY = this.game.applySmoothCoord(this.y, this.toY, rate);
             else if (this.y !== this.toY && this.x === this.toX) {
                 this.direction = this.y < this.toY ? this.DIRECTIONS.DOWN : this.DIRECTIONS.UP;
-                nextY = this.game.applySmoothCoord(this.y, this.toY);
+                nextY = this.game.applySmoothCoord(this.y, this.toY, rate);
             }
             
             switch(this.state) {
@@ -1220,7 +1241,7 @@ function PacCoin() {
                         this.goToNextCoords(nextX,nextY);
                     else {
 
-                        if (this.howLongIsTheWait >= this.waitingTime)
+                        if (this.howLongIsTheWait >= this.leaveWaitingTime)
                             this.stopWaitingAndGoHunting();
                         else {
                             var limit = {
@@ -1228,22 +1249,22 @@ function PacCoin() {
                                 y: { min: this.bornCoordI.begin * this.size, max: this.bornCoordI.end * this.size }
                             }
     
-                            if (this.canGoInTheDirection(this.direction, limit))
+                            if (this.canGoInTheDirection(this.direction, this.x, this.y, limit))
                                 this.goToTheDirection(this.direction);
                             else {
                                 var direction = this.getReverseDirection();
                                 
-                                if (this.canGoInTheDirection(direction, limit))
+                                if (this.canGoInTheDirection(direction, this.x, this.y, limit))
                                     this.goToTheDirection(direction);
                                 else {
                                     direction = this.getReverseOrientation();
     
-                                    if (this.canGoInTheDirection(direction, limit))
+                                    if (this.canGoInTheDirection(direction, this.x, this.y, limit))
                                         this.goToTheDirection(direction);
                                     else {
                                         var direction = this.getReverseDirection();
     
-                                        if (this.canGoInTheDirection(direction, limit))
+                                        if (this.canGoInTheDirection(direction, this.x, this.y, limit))
                                             this.goToTheDirection(direction);
                                     }
                                 }
@@ -1260,16 +1281,36 @@ function PacCoin() {
                         this.goHunting();
                     break;
                 }
-                case this.STATES.HUNTERING: {
-                    if (nextX !== this.x || nextY !== this.y)
+                case this.STATES.HUNTING: {
+                    if (nextX !== this.x || nextY !== this.y) {
                         this.goToNextCoords(nextX, nextY);
+                    }
                     else {
-                        this.destinationToGo = {
-                            i: this.game.pac.i(true),
-                            j: this.game.pac.j(true)
-                        };
+                        var pacI = this.game.pac.i();
+                        var pacJ = this.game.pac.j();
 
-                        this.goToDestination();
+                        if (!this.arrayDirectionsToGo.length ||
+                            !this.lastDestinationToGo ||
+                            this.lastDestinationToGo.i !== pacI ||
+                            this.lastDestinationToGo.j !== pacJ)
+                        {
+                            var lastNextDirection = this.arrayDirectionsToGo.length ? this.arrayDirectionsToGo[0] : null;
+                            this.arrayDirectionsToGo = [];
+                            this.lastDestinationToGo = null;
+                            this.destinationToGo = {
+                                i: pacI,
+                                j: pacJ
+                            };
+
+                            this.goToDestination(lastNextDirection);
+                        }
+                        
+                        if (this.arrayDirectionsToGo.length) {
+                            var direction = this.arrayDirectionsToGo[0];
+                            this.arrayDirectionsToGo = this.arrayDirectionsToGo.length ? this.arrayDirectionsToGo.slice(1) : [];
+                            this.goToTheDirection(direction);
+                            this.updateCoordinates();
+                        }
                     }
                     break;
                 }
@@ -1311,17 +1352,15 @@ function PacCoin() {
                 this.toX = this.x + this.size;
         }
 
-        this.canGoInTheDirection = function(direction, limit) {
-            var x = this.x;
-            var y = this.y;
+        this.canGoInTheDirection = function(direction, x, y, limit) {
             if (direction === this.DIRECTIONS.UP)
-                y = (this.i(true, direction)) * this.size;
+                y -= this.size;
             else if (direction === this.DIRECTIONS.DOWN)
-                y = (this.i(true, direction) + 1) * this.size;
+                y += this.size;
             else if (direction === this.DIRECTIONS.LEFT)
-                x = (this.j(true, direction)) * this.size;
+                x -= this.size;
             else if (direction === this.DIRECTIONS.RIGHT)
-                x = (this.j(true, direction) + 1) * this.size;
+                x += this.size;
 
             if (limit) {
                 if (x < limit.x.min || x > limit.x.max)
@@ -1330,7 +1369,15 @@ function PacCoin() {
                     return false;
             }
 
-            return !this.game.map.isCollidingWithWall(x, y, this.size);
+            var block = this.game.map.getBlockByCoordinates(x, y, this.size);
+
+            if (this.state === this.STATES.HUNTING)
+                return block !== this.game.map.POSITION_TYPE.WALL &&
+                        block !== this.game.map.POSITION_TYPE.PORTAL &&
+                        block !== this.game.map.POSITION_TYPE.PORTAL_PATH &&
+                        block !== this.game.map.POSITION_TYPE.GHOST_HOUSE;
+            else
+                return block !== this.game.map.POSITION_TYPE.WALL;
         }
 
         this.stopWaitingAndGoHunting = function() {
@@ -1391,55 +1438,176 @@ function PacCoin() {
             }
         };
 
-        this.goToDestination = function() {
+        this.goToDestination = function(lastDirection) {
             if (this.destinationToGo && this.destinationToGo.i && this.destinationToGo.j) {
-                var detination = this.destinationToGo;
+                if (this.destinationToGo.i === this.i() &&  this.destinationToGo.j === this.j())
+                    return;
+
+                this.lastDestinationToGo = this.destinationToGo;
+                var detination = this.lastDestinationToGo;
+
                 var destX = detination.j * this.size;
                 var destY = detination.i * this.size;
+
+                var x = this.x;
+                var y = this.y;
 
                 var diffDistanceX = Math.abs(this.x - destX);
                 var diffDistanceY = Math.abs(this.y - destY);
 
-                if (diffDistanceX > diffDistanceY) {
-                    
+                var destDirectionX = destX < this.x ? 'LEFT' : 'RIGHT';
+                var destDirectionY = destY < this.x ? 'UP' : 'DOWN';
+
+                var direction = lastDirection ? lastDirection : '';
+
+                if (!lastDirection) {
+                    if (Helper.randomInterval(1, 999) % 2 > 0)
+                        direction = (diffDistanceX > diffDistanceY) ? destDirectionX : destDirectionY;
+                    else
+                        direction = (diffDistanceX > diffDistanceY) ? destDirectionY : destDirectionX;
                 }
+
+                var arrayDirections = [];
+
+                var maxI = this.game.map.lengthY - 1;
+                var maxJ = this.game.map.lengthX - 1;
+
+                var getRateMovI = function(direction, destDirectionY) {
+                    var _direction = this.directionIsY(direction) 
+                                            ? direction
+                                            : destDirectionY;
+                    return _direction === 'UP' ? -1 : 1;
+                }.bind(this);
+
+                var getRateMovJ = function(direction, destDirectionX) {
+                    var _direction = this.directionIsX(direction) 
+                                            ? direction
+                                            : destDirectionX;
+                    return _direction === 'LEFT' ? -1 : 1;
+                }.bind(this);
+
+                var getLastDirection = function() {
+                    return arrayDirections.length ? arrayDirections[arrayDirections.length - 1] : '';
+                }.bind(this.goToDestination);
+
+                var isReturning = function(direction) {
+                    if (arrayDirections.length)
+                        return getReverseDirection(direction) === arrayDirections[arrayDirections.length - 1];
+                    return false;
+                }.bind(this.goToDestination);
+
+                var getReverseDirection = this.getReverseDirection;
+                
+                buildRoute:
+                for(var i = this.i(true);  i >= 0 && i <= maxI; i += getRateMovI(direction, destDirectionY)) {
+                    for(var j = this.j(true); j >= 0 && j <= maxJ; j += getRateMovJ(direction, destDirectionX)) {
+                        for (var attempts = 1; attempts <= 5; attempts++) {
+                            if (attempts <= 4) {
+                                if (this.canGoInTheDirection(direction, x, y)) {
+                                    arrayDirections.push(direction);
+
+                                    if (this.directionIsX(direction))
+                                        x += this.size * (direction === 'LEFT' ? -1 : 1);
+                                    else
+                                        y += this.size * (direction === 'UP' ? -1 : 1);
+
+                                    diffDistanceX = Math.abs(x - destX);
+                                    diffDistanceY = Math.abs(y - destY);
+
+                                    if (diffDistanceX > 0 || diffDistanceY > 0) {
+                                        destDirectionX = destX < x ? 'LEFT' : 'RIGHT';
+                                        destDirectionY = destY < y ? 'UP' : 'DOWN';
+                
+                                        if (Helper.randomInterval(1, 999) % 2 > 0)
+                                            direction = (diffDistanceX > diffDistanceY) ? destDirectionX : destDirectionY;
+                                        else
+                                            direction = (diffDistanceX > diffDistanceY) ? destDirectionY : destDirectionX;
+
+                                        if (isReturning(direction))
+                                            direction = this.directionIsX(direction) ? destDirectionY : destDirectionX;
+
+                                        var lastDirection = getLastDirection();
+                                        
+                                        if (lastDirection === direction && direction !== destDirectionX && direction !== destDirectionY)
+                                            direction = this.directionIsX(direction) ? destDirectionY : destDirectionX;
+    
+                                        break;
+                                    }
+                                    else
+                                        break buildRoute;
+                                }
+                                else {
+                                    if (attempts % 2 !== 0) {
+                                        direction = this.directionIsX(direction) ? destDirectionY : destDirectionX;
+
+                                        if (isReturning(direction))
+                                            direction = this.getReverseDirection(direction);
+                                    }
+                                    else {
+                                        if (!isReturning(this.getReverseDirection(direction)))
+                                            direction = this.getReverseDirection(direction);
+                                        else
+                                            direction = this.directionIsX(direction) ? destDirectionY : destDirectionX;
+                                    }
+                                    
+                                }
+                            }
+                            else {
+                                // console.log('NO ROUTE!! ' + this.name);
+                                break buildRoute;
+                            }
+                        }
+                    }
+                }
+
+                this.arrayDirectionsToGo = arrayDirections;
             }
         };
 
         this.goHunting = function() {
-            this.state = this.STATES.HUNTERING;
+            this.state = this.STATES.HUNTING;
             this.image.src = this.imagesPerState[this.state].normal;
         };
 
-        this.updateWaitingTime = function() {
-            if (this.state === this.STATES.WAITING)
-                this.howLongIsTheWait += this.game.timeToRerender;
-            else
-                this.howLongIsTheWait = 0;
+        this.updaterenderWaitingTime = function() {
+            this.howLongIsTheWait += this.game.timeToRerender;
         }
 
-        this.directionIsX = function() { return this.direction === 'LEFT' || this.direction === 'LEFT'; };
-        this.directionIsY = function() { return this.direction === 'UP' || this.direction === 'DOWN'; };
-        this.getReverseDirection = function() {
-            if (this.direction === 'UP')
+        this.directionIsX = function(direction) {
+            if (!direction) direction = this.direction;
+            return direction === 'LEFT' || direction === 'RIGHT';
+        };
+        this.directionIsY = function(direction) {
+            if (!direction) direction = this.direction;
+            return direction === 'UP' || direction === 'DOWN';
+        };
+
+        this.getReverseDirection = function(direction) {
+            if (!direction)
+                direction = this.direction;
+
+            if (direction === 'UP')
                 return 'DOWN';
-            if (this.direction === 'DOWN')
+            if (direction === 'DOWN')
                 return 'UP';
-            if (this.direction === 'LEFT')
+            if (direction === 'LEFT')
                 return 'RIGHT';
-            if (this.direction === 'RIGHT')
+            if (direction === 'RIGHT')
                 return 'LEFT';
 
             return 'NONE';
         };
-        this.getReverseOrientation = function() {
-            if (this.direction === 'UP')
+        this.getReverseOrientation = function(direction) {
+            if (!direction)
+                direction = this.direction;
+
+            if (direction === 'UP')
                 return 'LEFT';
-            if (this.direction === 'DOWN')
+            if (direction === 'DOWN')
                 return 'RIGHT';
-            if (this.direction === 'LEFT')
+            if (direction === 'LEFT')
                 return 'UP';
-            if (this.direction === 'RIGHT')
+            if (direction === 'RIGHT')
                 return 'DOWN';
 
             return 'NONE';
