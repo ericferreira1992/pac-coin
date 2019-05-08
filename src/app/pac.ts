@@ -216,62 +216,64 @@ export class Pac {
     };
 
     updateCoordinates() {
-        var nextX = this.game.applySmoothCoord(this.x, this.toX);
-        var nextY = this.game.applySmoothCoord(this.y, this.toY);
-
-        if (!this.enteringPortal) {
-            if (nextX !== this.x || nextY !== this.y) {
-                if (!this.game.map.pacCanGo(nextX, nextY, this.size, this.direction)){
-                    this.x = nextX;
-                    this.y = nextY;
-
-                    this.checkColisions();
+        if (this.game.isRunning) {
+            var nextX = this.game.applySmoothCoord(this.x, this.toX);
+            var nextY = this.game.applySmoothCoord(this.y, this.toY);
+    
+            if (!this.enteringPortal) {
+                if (nextX !== this.x || nextY !== this.y) {
+                    if (!this.game.map.pacCanGo(nextX, nextY, this.size, this.direction)){
+                        this.x = nextX;
+                        this.y = nextY;
+    
+                        this.checkColisions();
+                    }
+                    else {
+                        this.x = Math.floor(this.j()) * this.size;
+                        this.y = Math.floor(this.i()) * this.size;
+                        this.toX = this.x;
+                        this.toY = this.y
+                    }
                 }
                 else {
-                    this.x = Math.floor(this.j()) * this.size;
-                    this.y = Math.floor(this.i()) * this.size;
-                    this.toX = this.x;
-                    this.toY = this.y
+                    if (this.directionAfterEnd) {
+                        if (this.directionAfterEnd === DIRECTIONS.LEFT || this.directionAfterEnd === DIRECTIONS.RIGHT)
+                            this.moveX(this.directionAfterEnd);
+                        else
+                            this.moveY(this.directionAfterEnd);
+                    }
                 }
             }
             else {
-                if (this.directionAfterEnd) {
-                    if (this.directionAfterEnd === DIRECTIONS.LEFT || this.directionAfterEnd === DIRECTIONS.RIGHT)
-                        this.moveX(this.directionAfterEnd);
-                    else
-                        this.moveY(this.directionAfterEnd);
-                }
-            }
-        }
-        else {
-            if (nextX !== this.x || nextY !== this.y) {
-                this.x = nextX;
-                this.y = nextY;
-
-                if (this.x === this.toX && this.y === this.toY) {
-
-                    if (!this.enteringPortalEnding) {
-                        this.enteringPortalEnding = true;
-                        if (this.direction === DIRECTIONS.RIGHT) {
-                            this.x = -this.size;
-                            this.toX = 0;
+                if (nextX !== this.x || nextY !== this.y) {
+                    this.x = nextX;
+                    this.y = nextY;
+    
+                    if (this.x === this.toX && this.y === this.toY) {
+    
+                        if (!this.enteringPortalEnding) {
+                            this.enteringPortalEnding = true;
+                            if (this.direction === DIRECTIONS.RIGHT) {
+                                this.x = -this.size;
+                                this.toX = 0;
+                            }
+                            else if (this.direction === DIRECTIONS.LEFT) {
+                                this.x = this.game.width;
+                                this.toX = this.game.width - this.size;
+                            }
+                            else if (this.direction === DIRECTIONS.DOWN) {
+                                this.y = -this.size;
+                                this.toY = 0;
+                            }
+                            else if (this.direction === DIRECTIONS.UP) {
+                                this.y = this.game.height;
+                                this.toY = this.game.height - this.size;
+                            }
                         }
-                        else if (this.direction === DIRECTIONS.LEFT) {
-                            this.x = this.game.width;
-                            this.toX = this.game.width - this.size;
+                        else{
+                            this.enteringPortal = false;
+                            this.enteringPortalEnding = false;
                         }
-                        else if (this.direction === DIRECTIONS.DOWN) {
-                            this.y = -this.size;
-                            this.toY = 0;
-                        }
-                        else if (this.direction === DIRECTIONS.UP) {
-                            this.y = this.game.height;
-                            this.toY = this.game.height - this.size;
-                        }
-                    }
-                    else{
-                        this.enteringPortal = false;
-                        this.enteringPortalEnding = false;
                     }
                 }
             }

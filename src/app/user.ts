@@ -30,6 +30,7 @@ export class User {
     setPillGetted(i: number, j: number) {
         if (!this.pillIsGetted(i, j)) {
             this.pillsGettedCoords.push({ i, j });
+            this.game.onPacGettedPill();
             this.updateScores();
         }
     }

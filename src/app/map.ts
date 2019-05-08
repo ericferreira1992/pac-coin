@@ -1,26 +1,17 @@
 import { PacCoin } from './pac-coin';
 import { DIRECTIONS } from './enums';
+import { Helper } from './helper';
 
 export class Map {
     
     private game: PacCoin;
     
-    public matriz: number[][];
+    public matriz: BLOCK_TYPE[][];
 
     public pacBornCoords: { x: number, y: number };
     public ghostBornCoords: {
         x: { begin: number, end: number },
         y: { begin: number, end: number }
-    };
-
-    public POSITION_TYPE = {
-        BISCUIT: 0,
-        WALL: 1,
-        PILL: 2,
-        GHOST_HOUSE: 6,
-        PORTAL_PATH: 7,
-        PORTAL: 8,
-        EMPTY: 9,
     };
 
     public lengthX: number;
@@ -86,7 +77,7 @@ export class Map {
         let yMid = y + this.game.blockSize / 2;
 
         switch (block) {
-            case this.POSITION_TYPE.WALL: {
+            case BLOCK_TYPE.WALL: {
                 let direction = this.getWallDirection(i, j);
 
                 if (direction === WALL_DIRECTIONS.CROSS)
@@ -190,7 +181,7 @@ export class Map {
                 this.game.context.stroke();
                 break;
             }
-            case this.POSITION_TYPE.BISCUIT: {
+            case BLOCK_TYPE.BISCUIT: {
                 let indexes = this.game.map.getIndexesByCoordinates(x, y);
                 if (!this.game.user.biscuitIsGetted(indexes.i, indexes.j)) {
                     let biscuitSize = 2;
@@ -201,7 +192,7 @@ export class Map {
                 }
                 break;
             }
-            case this.POSITION_TYPE.PILL: {
+            case BLOCK_TYPE.PILL: {
                 let indexes = this.game.map.getIndexesByCoordinates(x, y);
                 if (!this.game.user.pillIsGetted(indexes.i, indexes.j)) {
                     let pillSize = 24;
@@ -296,7 +287,7 @@ export class Map {
         let onLeftBottom = this.getLeftBottomBlock(i, j);
         let onRightBottom = this.getRightBottomBlock(i, j);
 
-        let WALL = this.POSITION_TYPE.WALL;
+        let WALL = BLOCK_TYPE.WALL;
 
         // HORIZONTAL
         if ((onLeft === WALL || onRight === WALL) && (onTop !== WALL && onBottom !== WALL))
@@ -321,7 +312,7 @@ export class Map {
         let onLeft = this.getLeftBlock(i, j);
         let onRight = this.getRightBlock(i, j);
 
-        let WALL = this.POSITION_TYPE.WALL;
+        let WALL = BLOCK_TYPE.WALL;
         
         if (onRight === WALL && onLeft !== WALL)
             return WALL_DIRECTIONS.HORIZONTAL_RIGHT;
@@ -335,7 +326,7 @@ export class Map {
         let onTop = this.getTopBlock(i, j);
         let onBottom = this.getBottomBlock(i, j);
 
-        let WALL = this.POSITION_TYPE.WALL;
+        let WALL = BLOCK_TYPE.WALL;
         
         if (onTop === WALL && onBottom !== WALL)
             return WALL_DIRECTIONS.VERTICAL_TOP;
@@ -351,7 +342,7 @@ export class Map {
         let onTop = this.getTopBlock(i, j);
         let onBottom = this.getBottomBlock(i, j);
 
-        let WALL = this.POSITION_TYPE.WALL;
+        let WALL = BLOCK_TYPE.WALL;
         
         if (onBottom === WALL && onLeft !== WALL && onRight !== WALL)
             return true;
@@ -360,62 +351,62 @@ export class Map {
     }
 
     wallIsLeftTop(i: number, j: number) {
-        return this.getRightBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getBottomBlock(i, j) === this.POSITION_TYPE.WALL &&
+        return this.getRightBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getBottomBlock(i, j) === BLOCK_TYPE.WALL &&
             !this.wallIsCross(i, j);
     }
 
     wallIsLeftBottom(i: number, j: number) {
-        return this.getRightBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getTopBlock(i, j) === this.POSITION_TYPE.WALL &&
+        return this.getRightBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getTopBlock(i, j) === BLOCK_TYPE.WALL &&
             !this.wallIsCross(i, j);
     }
 
     wallIsRightTop(i: number, j: number) {
-        return this.getLeftBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getBottomBlock(i, j) === this.POSITION_TYPE.WALL &&
+        return this.getLeftBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getBottomBlock(i, j) === BLOCK_TYPE.WALL &&
             !this.wallIsCross(i, j);
     }
 
     wallIsRightBottom(i: number, j: number) {
-        return this.getLeftBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getTopBlock(i, j) === this.POSITION_TYPE.WALL &&
+        return this.getLeftBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getTopBlock(i, j) === BLOCK_TYPE.WALL &&
             !this.wallIsCross(i, j);
     }
 
     wallIsCross(i: number, j: number) {
-        return this.getLeftBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getRightBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getTopBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getBottomBlock(i, j) === this.POSITION_TYPE.WALL;
+        return this.getLeftBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getRightBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getTopBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getBottomBlock(i, j) === BLOCK_TYPE.WALL;
     }
 
     wallIsBifurcLeft(i: number, j: number) {
         return !this.wallIsCross(i, j) &&
-            this.getLeftBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getTopBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getBottomBlock(i, j) === this.POSITION_TYPE.WALL;
+            this.getLeftBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getTopBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getBottomBlock(i, j) === BLOCK_TYPE.WALL;
     }
 
     wallIsBifurcBottom(i: number, j: number) {
         return !this.wallIsCross(i, j) &&
-            this.getBottomBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getLeftBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getRightBlock(i, j) === this.POSITION_TYPE.WALL;
+            this.getBottomBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getLeftBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getRightBlock(i, j) === BLOCK_TYPE.WALL;
     }
 
     wallIsBifurcTop(i: number, j: number) {
         return !this.wallIsCross(i, j) &&
-            this.getTopBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getLeftBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getRightBlock(i, j) === this.POSITION_TYPE.WALL;
+            this.getTopBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getLeftBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getRightBlock(i, j) === BLOCK_TYPE.WALL;
     }
 
     wallIsBifurcRight(i: number, j: number) {
         return !this.wallIsCross(i, j) &&
-            this.getRightBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getTopBlock(i, j) === this.POSITION_TYPE.WALL &&
-            this.getBottomBlock(i, j) === this.POSITION_TYPE.WALL;
+            this.getRightBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getTopBlock(i, j) === BLOCK_TYPE.WALL &&
+            this.getBottomBlock(i, j) === BLOCK_TYPE.WALL;
     }
 
     getRightBlock(i: number, j: number) {
@@ -564,34 +555,34 @@ export class Map {
     isCollidingWithWall(x: number, y: number, size?: number, direction?: any) {
         let indexes = this.getIndexesByCoordinates(x, y, size, direction);
         let block = this.matriz[indexes.i][indexes.j];
-        return block === this.POSITION_TYPE.WALL;
+        return block === BLOCK_TYPE.WALL;
     }
 
     pacCanGo(x: number, y: number, size?: number, direction?: any) {
         let indexes = this.getIndexesByCoordinates(x, y, size, direction);
         let block = this.matriz[indexes.i][indexes.j];
         return [
-            this.POSITION_TYPE.WALL,
-            this.POSITION_TYPE.GHOST_HOUSE
+            BLOCK_TYPE.WALL,
+            BLOCK_TYPE.GHOST_HOUSE
         ].indexOf(block) >= 0;
     }
 
     xCoordinateIsEnd(x: number, y: number) {
         let indexes = this.getIndexesByCoordinates(x, y, null, DIRECTIONS.RIGHT);
         let block = this.matriz[indexes.i][indexes.j];
-        return indexes.j >= (this.matriz[0].length - 1) && block !== this.POSITION_TYPE.PORTAL;
+        return indexes.j >= (this.matriz[0].length - 1) && block !== BLOCK_TYPE.PORTAL;
     }
 
     xCoordinateIsBegin(x: number, y: number) {
         let indexes = this.getIndexesByCoordinates(x, y, null, DIRECTIONS.LEFT);
         let block = this.matriz[indexes.i][indexes.j];
-        return indexes.j <= 0 && block !== this.POSITION_TYPE.PORTAL;
+        return indexes.j <= 0 && block !== BLOCK_TYPE.PORTAL;
     }
 
     yCoordinateIsEnd(y: number, size?: number) {
         let indexes = this.getIndexesByCoordinates(0, y, size, DIRECTIONS.DOWN);
         let block = this.matriz[indexes.i][indexes.j];
-        return indexes.i >= (this.matriz.length - 1) && block !== this.POSITION_TYPE.PORTAL;
+        return indexes.i >= (this.matriz.length - 1) && block !== BLOCK_TYPE.PORTAL;
     }
 
     yCoordinateIsBegin(y: number) {
@@ -601,7 +592,7 @@ export class Map {
     biscuitGettedByCoordinates(x: number, y: number, size?: number, direction?: any) {
         let indexes = this.getIndexesByCoordinates(x, y, size);
         let block = this.matriz[indexes.i][indexes.j];
-        let isBiscuit = block === this.POSITION_TYPE.BISCUIT;
+        let isBiscuit = block === BLOCK_TYPE.BISCUIT;
 
         let directionInX = direction === DIRECTIONS.LEFT || direction === DIRECTIONS.RIGHT;
         let directionInY = direction === DIRECTIONS.UP || direction === DIRECTIONS.DOWN;
@@ -622,7 +613,7 @@ export class Map {
     pillGettedByCoordinates(x: number, y: number, size?: number, direction?: DIRECTIONS) {
         let indexes = this.getIndexesByCoordinates(x, y, size);
         let block = this.matriz[indexes.i][indexes.j];
-        let isPill = block === this.POSITION_TYPE.PILL;
+        let isPill = block === BLOCK_TYPE.PILL;
 
         if (direction === DIRECTIONS.UP)
             y -= size;
@@ -636,6 +627,17 @@ export class Map {
             isPill = (directionInX && x % size >= 5) || (directionInY && y % size >= 5);
         
         return isPill;
+    }
+
+    public getRandomIndexesBlock(types: BLOCK_TYPE[], exceptions: { i: number, j: number }[]) {
+        let i = Helper.randomInterval(0, this.lengthY - 1);
+        let j = Helper.randomInterval(0, this.lengthX - 1);
+        while(!types.some(t => this.matriz[i][j] === t) || exceptions.some(except => i === except.i && j === except.j)) {
+            i = Helper.randomInterval(0, this.lengthY - 1);
+            j = Helper.randomInterval(0, this.lengthX - 1);
+        }
+
+        return { i, j };
     }
 }
 
@@ -657,3 +659,13 @@ export enum WALL_DIRECTIONS {
     BIFURC_LEFT = 'BIFURC_LEFT',
     BIFURC_RIGHT = 'BIFURC_RIGHT'
 };
+
+export enum BLOCK_TYPE {
+    BISCUIT = 0,
+    WALL = 1,
+    PILL = 2,
+    GHOST_HOUSE = 6,
+    PORTAL_PATH = 7,
+    PORTAL = 8,
+    EMPTY = 9,
+}

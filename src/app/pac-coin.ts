@@ -8,6 +8,8 @@ export class PacCoin {
     public moveRate = 5;
     public timeToRerender = 10;
 
+    public state: GAME_STATE = GAME_STATE.RUNNING;
+
     public colors = {
         background: '#424242',
         pac: '#FACD00',
@@ -21,9 +23,9 @@ export class PacCoin {
 
     public ghosts = [
         new  Ghost(this, '01'),
-        new  Ghost(this, '02'),
+        /* new  Ghost(this, '02'),
         new  Ghost(this, '03'),
-        new  Ghost(this, '04'),
+        new  Ghost(this, '04'), */
     ];
 
     public width = this.map.lengthX * this.blockSize;
@@ -33,6 +35,8 @@ export class PacCoin {
     public context: CanvasRenderingContext2D;
 
     public coinImg = new Image();
+
+    public get isRunning() { return this.state === GAME_STATE.RUNNING; }
     
     constructor() {
         this.coinImg.src = 'assets/img/sb-coin.svg';
@@ -45,7 +49,7 @@ export class PacCoin {
         setInterval(this.runGameLoop.bind(this), this.timeToRerender);
     }
 
-    createCanvas() {
+    private createCanvas() {
         this.canvas = document.createElement('canvas');
         this.canvas.width = this.width;
         this.canvas.height = this.height;
@@ -58,7 +62,7 @@ export class PacCoin {
         this.context = this.canvas.getContext('2d');
     }
 
-    createTitle() {
+    private createTitle() {
         let titleHtml = '' +
         '<div class="title" style="max-width: ' + this.width + 'px">'+
             '<h2 style="color: ' + this.colors.biscuit + '">'+
@@ -71,7 +75,7 @@ export class PacCoin {
         document.body.insertAdjacentHTML('afterbegin', titleHtml);
     }
 
-    makeListeners () {
+    private makeListeners () {
         document.onkeydown = (event) => {
             this.pac.onKeydown(event);
         };
@@ -81,7 +85,7 @@ export class PacCoin {
         };
     }
 
-    runGameLoop() {
+    private runGameLoop() {
         this.context.beginPath();
         this.context.clearRect(0, 0, this.width, this.height);
         this.map.render();
@@ -91,7 +95,24 @@ export class PacCoin {
         });
     };
 
-    applySmoothCoord (fromPosition: number, toPosition: number, customRate?: number) {
+    public ghostFoundPac() {
+        this.state = GAME_STATE.GHOST_FOUND_PAC;
+    }
+
+    public pacFoundStunnedGhost(i: number, j: number) {
+        let ghost = this.ghosts.find(g => g.i(true) === i && g.j(true) === j);
+        if (ghost) {
+            console.log(ghost);
+        }
+    }
+
+    public onPacGettedPill() {
+        this.ghosts.forEach((ghost) => {
+            ghost.onPillGetted();
+        });
+    }
+
+    public applySmoothCoord (fromPosition: number, toPosition: number, customRate?: number) {
         let rate = customRate ? customRate : 1;
         if (fromPosition !== toPosition) {
             let newPosition = fromPosition + ((fromPosition < toPosition) ? rate : -rate);
@@ -103,4 +124,12 @@ export class PacCoin {
         }
         return fromPosition;
     }
+}
+
+export enum GAME_STATE {
+    RUNNING = 'RUNNING',
+    PAUSED = 'PAUSED',
+    GHOST_FOUND_PAC = 'GHOST_FOUND_PAC',
+    WIN = 'WIN',
+    GAME_OVER = 'GAME_OVER'
 }
