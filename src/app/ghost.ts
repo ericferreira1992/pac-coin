@@ -198,7 +198,7 @@ export class Ghost {
                         else {
                             let pacI = this.game.pac.i();
                             let pacJ = this.game.pac.j();
-                            this.excuteGoToDestination(pacI, pacJ);
+                            this.executeGoToDestination(pacI, pacJ);
                         }
                     }
                     else 
@@ -224,10 +224,10 @@ export class Ghost {
                                 pacIndexes
                             ];
                             let coordinates = this.game.map.getRandomIndexesBlock([BLOCK_TYPE.BISCUIT, BLOCK_TYPE.PILL], exceptions);
-                            this.excuteGoToDestination(coordinates.i, coordinates.j);
+                            this.executeGoToDestination(coordinates.i, coordinates.j);
                         }
                         else
-                            this.excuteGoToDestination(this.destinationToGo.i, this.destinationToGo.j);
+                            this.executeGoToDestination(this.destinationToGo.i, this.destinationToGo.j);
                     }
                     break;
                 }
@@ -256,7 +256,6 @@ export class Ghost {
     private clearDestinationToGo() {
         this.lastDestinationToGo = null;
         this.destinationToGo = null;
-        this.clearWalkCoordinates();
     }
 
     private clearWalkCoordinates() {
@@ -264,13 +263,13 @@ export class Ghost {
         this.toY = this.y;
     }
 
-    private excuteGoToDestination(i: number, j: number) {
+    private executeGoToDestination(i: number, j: number) {
         if (!this.arrayDirectionsToGo.length ||
             !this.lastDestinationToGo ||
             this.lastDestinationToGo.i !== i ||
             this.lastDestinationToGo.j !== j)
         {
-            let lastNextDirection = this.arrayDirectionsToGo.length ? this.arrayDirectionsToGo[0] : null;
+            let lastNextDirection = this.arrayDirectionsToGo.length ? this.arrayDirectionsToGo[0] : this.direction;
             this.arrayDirectionsToGo = [];
             this.lastDestinationToGo = null;
             this.destinationToGo = {
@@ -293,14 +292,18 @@ export class Ghost {
         let nextX = this.x;
         let nextY = this.y;
 
-        if (this.x !== this.toX && this.directionIsX())
+        if (this.x !== this.toX && this.directionIsX()) {
+            this.direction = this.x < this.toX ? DIRECTIONS.RIGHT : DIRECTIONS.LEFT;
             nextX = this.game.applySmoothCoord(this.x, this.toX, rate);
+        }
         else if (this.x !== this.toX && this.y === this.toY) {
             this.direction = this.x < this.toX ? DIRECTIONS.RIGHT : DIRECTIONS.LEFT;
             nextX = this.game.applySmoothCoord(this.x, this.toX, rate);
         }
-        else if (this.y !== this.toY && this.directionIsY())
+        else if (this.y !== this.toY && this.directionIsY()) {
+            this.direction = this.y < this.toY ? DIRECTIONS.DOWN : DIRECTIONS.UP;
             nextY = this.game.applySmoothCoord(this.y, this.toY, rate);
+        }
         else if (this.y !== this.toY && this.x === this.toX) {
             this.direction = this.y < this.toY ? DIRECTIONS.DOWN : DIRECTIONS.UP;
             nextY = this.game.applySmoothCoord(this.y, this.toY, rate);
@@ -325,20 +328,31 @@ export class Ghost {
     goToTheDirection(direction: DIRECTIONS) {
         this.direction = direction;
 
-        if (Helper.hasDecimal(this.x))
-            this.x = this.j() * this.size;
-        
-        if (Helper.hasDecimal(this.y))
-            this.y = this.i() * this.size;
+        let rate = this.size;
+        let i = this.i();
+        let j = this.j();
+
+        let x = j * this.size;
+        let y = i * this.size;
+
+        /* if (Helper.hasDecimal(this.x / this.size)) {
+            debugger;
+            // let integer = Helper.getIntegerSide(this.x / rate);
+            // let decimal = Helper.getDecimalSide(this.x / rate);
+
+        }
+        if (Helper.hasDecimal(this.y / this.size)) {
+            debugger;
+        } */
 
         if (direction === DIRECTIONS.UP)
-            this.toY = this.y - this.size;
+            this.toY = y - rate;
         else if (direction === DIRECTIONS.DOWN)
-            this.toY = this.y + this.size;
+            this.toY = y + rate;
         else if (direction === DIRECTIONS.LEFT)
-            this.toX = this.x - this.size;
+            this.toX = x - rate;
         else if (direction === DIRECTIONS.RIGHT)
-            this.toX = this.x + this.size;
+            this.toX = x + rate;
     }
 
     canGoInTheDirection(direction: string, x: number, y: number, limit?: any) {
@@ -582,6 +596,10 @@ export class Ghost {
                     }
                 }
             }
+
+            /* if (arrayDirections.length > 0) {
+                if (this.directionIsX(arrayDirections[0]) && )
+            } */
 
             this.arrayDirectionsToGo = arrayDirections;
         }

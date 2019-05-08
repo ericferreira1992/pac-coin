@@ -4,7 +4,8 @@
     "scripts": {
         "build": "npx webpack --mode production",
         "start": "npm run serve",
-        "serve": "npx webpack-dev-server --watch true --devtool source-map --mode development"
+        "serve": "npx webpack-dev-server --watch true --devtool source-map --mode development",
+        "install-webpack": "npm install webpack webpack-cli webpack-dev-server -g"
     },
     "private": true,
     "dependencies": {
