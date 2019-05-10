@@ -205,7 +205,7 @@ export class Ghost {
                         else {
                             let pacI = this.game.pac.i();
                             let pacJ = this.game.pac.j();
-                            this.excuteGoToDestination(pacI, pacJ);
+                            this.executeGoToDestination(pacI, pacJ);
                         }
                     }
                     else 
@@ -228,23 +228,23 @@ export class Ghost {
                     if (next.x !== this.x || next.y !== this.y)
                         this.goToNextCoords(next.x, next.y);
                     else {
-                        let pacIndexes = { i: this.game.pac.i(), j: this.game.pac.j() };
+                        let pacPos = { i: this.game.pac.i(), j: this.game.pac.j() };
 
                         if (this.howLongIsTheWait >= this.stunningWaitingTime) {
                             this.goHunting();
                             this.updateCoordinates();
                         }
-                        else if (this.checkCurrentDestinationToGoEquals(pacIndexes.i, pacIndexes.j) || this.checkArriveTheDestination()) {
+                        else if (this.checkCurrentDestinationToGoEquals(pacPos.i, pacPos.j) || this.checkArriveTheDestination()) {
                             let exceptions = [
                                 { i: this.i(true), j: this.j(true) },
-                                { i: this.destinationToGo.i, j: this.destinationToGo.j },
-                                pacIndexes
+                                { i: this.destinationToGo.i, j: this.destinationToGo.j }
                             ];
-                            let coordinates = this.game.map.getRandomIndexesBlock([BLOCK_TYPE.BISCUIT, BLOCK_TYPE.PILL], exceptions);
-                            this.excuteGoToDestination(coordinates.i, coordinates.j);
+                            let limits = this.createLimitThisPositions(pacPos.i, pacPos.j);
+                            let coordinates = this.game.map.getRandomIndexesBlock([BLOCK_TYPE.BISCUIT, BLOCK_TYPE.PILL], exceptions, limits);
+                            this.executeGoToDestination(coordinates.i, coordinates.j);
                         }
                         else
-                            this.excuteGoToDestination(this.destinationToGo.i, this.destinationToGo.j);
+                            this.executeGoToDestination(this.destinationToGo.i, this.destinationToGo.j);
                     }
                     break;
                 }
@@ -263,12 +263,20 @@ export class Ghost {
             this.howLongIsTheWait = 0;
             this.clearDestinationToGo();
 
-            let exceptions = [
-                { i: this.i(), j: this.j() },
-                { i: this.game.pac.i(), j: this.game.pac.j() }
-            ];
-            this.destinationToGo = this.game.map.getRandomIndexesBlock([BLOCK_TYPE.BISCUIT, BLOCK_TYPE.PILL], exceptions);
+            let pacPos = { i: this.game.pac.i(), j: this.game.pac.j() };
+            let exceptions = [ { i: this.i(), j: this.j() } ];
+            let limits = this.createLimitThisPositions(pacPos.i, pacPos.j);
+            this.destinationToGo = this.game.map.getRandomIndexesBlock([BLOCK_TYPE.BISCUIT, BLOCK_TYPE.PILL], exceptions, limits);
         }
+    }
+
+    private createLimitThisPositions(i: number, j: number) {
+        let limits = {
+            i: { begin: Math.max(i - 10, 0), end: Math.min(i + 10, this.game.map.lengthY - 1) },
+            j: { begin: Math.max(j - 10, 0), end: Math.min(j + 10, this.game.map.lengthX - 1) }
+        };
+
+        return limits;
     }
 
     private clearDestinationToGo() {
@@ -281,7 +289,7 @@ export class Ghost {
         this.toY = this.y;
     }
 
-    private excuteGoToDestination(i: number, j: number) {
+    private executeGoToDestination(i: number, j: number) {
         if (!this.arrayDirectionsToGo.length ||
             !this.lastDestinationToGo ||
             this.lastDestinationToGo.i !== i ||
@@ -316,14 +324,18 @@ export class Ghost {
         let nextX = this.x;
         let nextY = this.y;
 
-        if (this.x !== this.toX && this.directionIsX())
+        if (this.x !== this.toX && this.directionIsX()) {
+            this.direction = this.x < this.toX ? DIRECTIONS.RIGHT : DIRECTIONS.LEFT;
             nextX = this.game.applySmoothCoord(this.x, this.toX, rate);
+        }
         else if (this.x !== this.toX && this.y === this.toY) {
             this.direction = this.x < this.toX ? DIRECTIONS.RIGHT : DIRECTIONS.LEFT;
             nextX = this.game.applySmoothCoord(this.x, this.toX, rate);
         }
-        else if (this.y !== this.toY && this.directionIsY())
+        else if (this.y !== this.toY && this.directionIsY()) {
+            this.direction = this.y < this.toY ? DIRECTIONS.DOWN : DIRECTIONS.UP;
             nextY = this.game.applySmoothCoord(this.y, this.toY, rate);
+        }
         else if (this.y !== this.toY && this.x === this.toX) {
             this.direction = this.y < this.toY ? DIRECTIONS.DOWN : DIRECTIONS.UP;
             nextY = this.game.applySmoothCoord(this.y, this.toY, rate);
@@ -596,6 +608,10 @@ export class Ghost {
                     }
                 }
             }
+
+            /* if (arrayDirections.length > 0) {
+                if (this.directionIsX(arrayDirections[0]) && )
+            } */
 
             this.arrayDirectionsToGo = arrayDirections;
         }

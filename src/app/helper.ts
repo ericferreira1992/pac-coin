@@ -6,4 +6,12 @@ export class Helper {
     public static hasDecimal(value: number) {
         return (value - Math.floor(value)) > 0;
     }
+
+    public static getIntegerSide(value: number) {
+        return  Math.floor(value);
+    }
+
+    public static getDecimalSide(value: number) {
+        return (value - Math.floor(value));
+    }
 }

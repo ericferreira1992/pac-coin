@@ -629,15 +629,24 @@ export class Map {
         return isPill;
     }
 
-    public getRandomIndexesBlock(types: BLOCK_TYPE[], exceptions: { i: number, j: number }[]) {
+    public getRandomIndexesBlock(types: BLOCK_TYPE[], exceptions?: { i: number, j: number }[], limits?: { i: { begin: number, end: number }, j: { begin: number, end: number } }) {
         let i = Helper.randomInterval(0, this.lengthY - 1);
         let j = Helper.randomInterval(0, this.lengthX - 1);
-        while(!types.some(t => this.matriz[i][j] === t) || exceptions.some(except => i === except.i && j === except.j)) {
+
+        if (!exceptions) exceptions = [];
+
+        while(!types.some(t => this.matriz[i][j] === t) || exceptions.some(except => i === except.i && j === except.j) && this.checkInsideLimits(i, j, limits)) {
             i = Helper.randomInterval(0, this.lengthY - 1);
             j = Helper.randomInterval(0, this.lengthX - 1);
         }
 
         return { i, j };
+    }
+
+    public checkInsideLimits(i: number, j: number, limits?: { i: { begin: number, end: number }, j: { begin: number, end: number } }) {
+        if (limits)
+            return (i >= limits.i.begin && i <= limits.i.end) && (j >= limits.j.begin && j <= limits.j.end);
+        return false;
     }
 }
 

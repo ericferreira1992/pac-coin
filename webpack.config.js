@@ -15,7 +15,7 @@ let config = {
 	},
 	devServer: {
 		host: '0.0.0.0',
-		port: 8080
+		port: 9090
 	},
 	watch: false,
 	watchOptions: {
@@ -30,11 +30,6 @@ let config = {
 	],
 	module: {
 		rules: [
-			/* {
-				test: /\.js$/,
-				exclude: /node_modules/,
-				loader: 'babel-loader'
-			}, */
             {
                 test: /\.tsx?$/,
                 loader: 'ts-loader',
