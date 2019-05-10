@@ -2,6 +2,7 @@ import { Helper } from './helper';
 import { DIRECTIONS } from './enums';
 import { PacCoin } from './pac-coin';
 import { BLOCK_TYPE } from './map';
+import { isNullOrUndefined } from 'util';
 
 export class Ghost {
 
@@ -15,7 +16,15 @@ export class Ghost {
     public bornCoordI: { begin: number, end: number };
     public bornCoordJ: { begin: number, end: number };
 
-    public imagesPerState: { [key: string]: string } = {};
+    public imagesPerState: { [key: string]: HTMLImageElement } = {
+        WAITING: new Image(),
+        STOP_WAITING: new Image(),
+        HUNTING: new Image(),
+        STUNNED: new Image(),
+        STUNNED_BLINK: new Image(),
+        DEAD_GO_HOME: new Image(),
+        DEAD: new Image()
+    };
 
     public x = 0;
     public y = 0;
@@ -25,14 +34,14 @@ export class Ghost {
     public direction = DIRECTIONS.NONE;
     public state = STATES.WAITING;
 
-    public image = new Image();
+    public get image() { return this.imagesPerState[this.state]; };
 
     public leaveWaitingTime = 0;
     public renderWaitingTime = 0;
     public stunningWaitingTime = 0;
+    public stunningBlinkAtEndOf = 0;
 
     public howLongIsTheWait = 0;
-
 
     public destinationToGo: any = null;
     public lastDestinationToGo: any = null;
@@ -49,20 +58,18 @@ export class Ghost {
         this.bornCoordI = { begin: this.bornCoordY.begin / this.size, end: this.bornCoordY.end / this.size };
         this.bornCoordJ = { begin: this.bornCoordX.begin / this.size, end: this.bornCoordX.end / this.size };
     
-        this.imagesPerState = {
-            WAITING: 'assets/img/ghosts/' + this.name + '.png',
-            STOP_WAITING: 'assets/img/ghosts/' + this.name + '.png',
-            HUNTING: 'assets/img/ghosts/' + this.name + '.png',
-            STUNNED: 'assets/img/ghosts/stunned.png',
-            DEAD_GO_HOME: 'assets/img/ghosts/' + this.name + '.png',
-            DEAD: 'assets/img/ghosts/' + this.name + '.png'
-        };
-    
-        this.updateImage();
+        this.imagesPerState.WAITING.src = 'assets/img/ghosts/' + this.name + '.png';
+        this.imagesPerState.STOP_WAITING.src = 'assets/img/ghosts/' + this.name + '.png';
+        this.imagesPerState.HUNTING.src = 'assets/img/ghosts/' + this.name + '.png';
+        this.imagesPerState.STUNNED.src = 'assets/img/ghosts/stunned.png';
+        this.imagesPerState.STUNNED_BLINK.src = 'assets/img/ghosts/stunned_blink.png';
+        this.imagesPerState.DEAD_GO_HOME.src = 'assets/img/ghosts/' + this.name + '.png';
+        this.imagesPerState.DEAD.src = 'assets/img/ghosts/' + this.name + '.png';
     
         this.leaveWaitingTime = 5000 + ((this.ghostNumber() - 1) * 4000);
         this.renderWaitingTime = (this.ghostNumber() - 1) * 4000;
-        this.stunningWaitingTime = 15000;
+        this.stunningWaitingTime = 13000;
+        this.stunningBlinkAtEndOf = 3000;
         
         this.initialize();
     }
@@ -205,19 +212,29 @@ export class Ghost {
                         this.game.ghostFoundPac();
                     break;
                 }
-                case STATES.STUNNED: {
-                    let next = this.getNextCoordinates(SPEED.NORMAL);
-                    let pacIndexes = { i: this.game.pac.i(), j: this.game.pac.j() };
+                case STATES.STUNNED:
+                case STATES.STUNNED_BLINK: {;
 
-                    if (!this.checkCurrentDestinationToGoEquals(pacIndexes.i, pacIndexes.j) && (next.x !== this.x || next.y !== this.y))
+                    let timeLeft = (this.stunningWaitingTime - this.howLongIsTheWait);
+
+                    if (timeLeft > 0 && timeLeft <= this.stunningBlinkAtEndOf) {
+                        if (timeLeft === this.stunningBlinkAtEndOf || timeLeft % 300 === 0)
+                            this.state = (this.state === STATES.STUNNED) ? STATES.STUNNED_BLINK : STATES.STUNNED;
+                    }
+                    else
+                        this.state = STATES.STUNNED;
+
+                    let next = this.getNextCoordinates(SPEED.NORMAL)
+                    if (next.x !== this.x || next.y !== this.y)
                         this.goToNextCoords(next.x, next.y);
                     else {
+                        let pacIndexes = { i: this.game.pac.i(), j: this.game.pac.j() };
+
                         if (this.howLongIsTheWait >= this.stunningWaitingTime) {
                             this.goHunting();
                             this.updateCoordinates();
                         }
-                        else if (this.checkCurrentDestinationToGoEquals(pacIndexes.i, pacIndexes.j) || this.checkArriveTheDestination()){
-                            this.clearWalkCoordinates();
+                        else if (this.checkCurrentDestinationToGoEquals(pacIndexes.i, pacIndexes.j) || this.checkArriveTheDestination()) {
                             let exceptions = [
                                 { i: this.i(true), j: this.j(true) },
                                 { i: this.destinationToGo.i, j: this.destinationToGo.j },
@@ -241,22 +258,22 @@ export class Ghost {
     }
 
     public onPillGetted() {
-        this.state = STATES.STUNNED;
-        this.updateImage();
-        this.howLongIsTheWait = 0;
-        this.clearDestinationToGo();
+        if (this.state === STATES.HUNTING) {
+            this.state = STATES.STUNNED;
+            this.howLongIsTheWait = 0;
+            this.clearDestinationToGo();
 
-        let exceptions = [
-            { i: this.i(), j: this.j() },
-            { i: this.game.pac.i(), j: this.game.pac.j() }
-        ];
-        this.destinationToGo = this.game.map.getRandomIndexesBlock([BLOCK_TYPE.BISCUIT, BLOCK_TYPE.PILL], exceptions);
+            let exceptions = [
+                { i: this.i(), j: this.j() },
+                { i: this.game.pac.i(), j: this.game.pac.j() }
+            ];
+            this.destinationToGo = this.game.map.getRandomIndexesBlock([BLOCK_TYPE.BISCUIT, BLOCK_TYPE.PILL], exceptions);
+        }
     }
 
     private clearDestinationToGo() {
         this.lastDestinationToGo = null;
         this.destinationToGo = null;
-        this.clearWalkCoordinates();
     }
 
     private clearWalkCoordinates() {
@@ -270,7 +287,7 @@ export class Ghost {
             this.lastDestinationToGo.i !== i ||
             this.lastDestinationToGo.j !== j)
         {
-            let lastNextDirection = this.arrayDirectionsToGo.length ? this.arrayDirectionsToGo[0] : null;
+            let lastNextDirection = this.arrayDirectionsToGo.length ? this.arrayDirectionsToGo[0] : this.direction;
             this.arrayDirectionsToGo = [];
             this.lastDestinationToGo = null;
             this.destinationToGo = {
@@ -282,8 +299,14 @@ export class Ghost {
         }
         
         if (this.arrayDirectionsToGo.length) {
-            let direction = this.arrayDirectionsToGo[0];
-            this.arrayDirectionsToGo = this.arrayDirectionsToGo.length ? this.arrayDirectionsToGo.slice(1) : [];
+            let direction;
+            
+            do {
+                direction = this.arrayDirectionsToGo[0];
+                this.arrayDirectionsToGo = this.arrayDirectionsToGo.length ? this.arrayDirectionsToGo.slice(1) : [];
+            }
+            while(this.arrayDirectionsToGo.length && !this.canGoInTheDirection(direction))
+
             this.goToTheDirection(direction);
             this.updateCoordinates();
         }
@@ -325,12 +348,6 @@ export class Ghost {
     goToTheDirection(direction: DIRECTIONS) {
         this.direction = direction;
 
-        if (Helper.hasDecimal(this.x))
-            this.x = this.j() * this.size;
-        
-        if (Helper.hasDecimal(this.y))
-            this.y = this.i() * this.size;
-
         if (direction === DIRECTIONS.UP)
             this.toY = this.y - this.size;
         else if (direction === DIRECTIONS.DOWN)
@@ -341,7 +358,12 @@ export class Ghost {
             this.toX = this.x + this.size;
     }
 
-    canGoInTheDirection(direction: string, x: number, y: number, limit?: any) {
+    canGoInTheDirection(direction: string, x?: number, y?: number, limit?: any) {
+        if (isNullOrUndefined(x))
+            x = this.x;
+        if (isNullOrUndefined(y))
+            y = this.y;
+
         if (direction === DIRECTIONS.UP)
             y -= this.size;
         else if (direction === DIRECTIONS.DOWN)
@@ -371,7 +393,6 @@ export class Ghost {
 
     stopWaitingAndGoHunting() {
         this.state = STATES.STOP_WAITING;
-        this.updateImage();
 
         // TRY TO EXIT THE Y AXIS
         for (let i = this.bornCoordI.begin; i <= this.bornCoordI.end; i = this.bornCoordI.end) {
@@ -471,15 +492,8 @@ export class Ghost {
             let destX = detination.j * this.size;
             let destY = detination.i * this.size;
 
-            let i = this.i(Helper.hasDecimal(this.y) && this.state === STATES.STUNNED);
-            let j = this.j(Helper.hasDecimal(this.x) && this.state === STATES.STUNNED);
-            let x = j * this.size;
-            let y = i * this.size;
-
-            if (this.game.map.matriz[i][j] === BLOCK_TYPE.WALL) {
-                let teste = '';
-            }
-
+            let x = this.x;
+            let y = this.y;
 
             let diffDistanceX = Math.abs(x - destX);
             let diffDistanceY = Math.abs(y - destY);
@@ -590,11 +604,6 @@ export class Ghost {
     goHunting() {
         this.state = STATES.HUNTING;
         this.clearDestinationToGo();
-        this.updateImage();
-    };
-
-    updateImage() {
-        this.image.src = this.imagesPerState[this.state];
     };
 
     updateRenderWaitingTime() {
@@ -653,6 +662,7 @@ export enum STATES {
     STOP_WAITING = 'STOP_WAITING',
     HUNTING = 'HUNTING',
     STUNNED = 'STUNNED',
+    STUNNED_BLINK = 'STUNNED_BLINK',
     DEAD_GO_HOME = 'DEAD_GO_HOME',
     DEAD = 'DEAD',
 };

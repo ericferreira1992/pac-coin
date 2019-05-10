@@ -1,5 +1,6 @@
 import { PacCoin } from './pac-coin';
 import { DIRECTIONS } from './enums';
+import { Helper } from './helper';
 
 export class Pac {
     public game: PacCoin;
@@ -222,7 +223,8 @@ export class Pac {
     
             if (!this.enteringPortal) {
                 if (nextX !== this.x || nextY !== this.y) {
-                    if (!this.game.map.pacCanGo(nextX, nextY, this.size, this.direction)){
+                    let canParseDirection = !Helper.hasDecimal(this.y / this.size) && !Helper.hasDecimal(this.x / this.size)
+                    if (!this.game.map.pacCanGo(nextX, nextY, this.size, canParseDirection ? this.direction : null)){
                         this.x = nextX;
                         this.y = nextY;
     

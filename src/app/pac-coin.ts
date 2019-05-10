@@ -23,9 +23,9 @@ export class PacCoin {
 
     public ghosts = [
         new  Ghost(this, '01'),
-        /* new  Ghost(this, '02'),
+        new  Ghost(this, '02'),
         new  Ghost(this, '03'),
-        new  Ghost(this, '04'), */
+        new  Ghost(this, '04'),
     ];
 
     public width = this.map.lengthX * this.blockSize;
