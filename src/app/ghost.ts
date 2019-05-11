@@ -47,7 +47,7 @@ export class Ghost {
     public lastDestinationToGo: any = null;
     public arrayDirectionsToGo: any[] = [];
 
-    constructor(game: PacCoin, name: string){
+    constructor(game: PacCoin, name: string) {
         this.game = game;
         this.name = name;
     
@@ -63,8 +63,8 @@ export class Ghost {
         this.imagesPerState.HUNTING.src = 'assets/img/ghosts/' + this.name + '.png';
         this.imagesPerState.STUNNED.src = 'assets/img/ghosts/stunned.png';
         this.imagesPerState.STUNNED_BLINK.src = 'assets/img/ghosts/stunned_blink.png';
-        this.imagesPerState.DEAD_GO_HOME.src = 'assets/img/ghosts/' + this.name + '.png';
-        this.imagesPerState.DEAD.src = 'assets/img/ghosts/' + this.name + '.png';
+        this.imagesPerState.DEAD_GO_HOME.src = 'assets/img/ghosts/dead.png';
+        this.imagesPerState.DEAD.src = 'assets/img/ghosts/dead.png';
     
         this.leaveWaitingTime = 5000 + ((this.ghostNumber() - 1) * 4000);
         this.renderWaitingTime = (this.ghostNumber() - 1) * 4000;
@@ -112,11 +112,20 @@ export class Ghost {
     initialize(){
         let initI = Helper.randomInterval(this.bornCoordI.begin, this.bornCoordI.end);
         let initJ = Helper.randomInterval(this.bornCoordJ.begin, this.bornCoordJ.end);
+        this.startWaiting(initI, initJ);
+    };
 
+    private startWaiting(initI?: number, initJ?: number) {
+
+        if (isNullOrUndefined(initI))
+            initI = this.i();
+        if (isNullOrUndefined(initJ))
+            initJ = this.j();
+
+        this.state = STATES.WAITING;
         this.x = initJ * this.size;
         this.y = initI * this.size;
-        this.toX = this.x;
-        this.toY = this.y;
+        this.clearWalkCoordinates();
 
         if (this.bornCoordI.begin !== this.bornCoordI.end) {
             if (initI > this.bornCoordI.begin)
@@ -130,7 +139,7 @@ export class Ghost {
             else
                 this.goToTheDirection(DIRECTIONS.RIGHT);
         }
-    };
+    }
 
     render(){
         this.updateRenderWaitingTime();
@@ -209,7 +218,7 @@ export class Ghost {
                         }
                     }
                     else 
-                        this.game.ghostFoundPac();
+                        this.game.ghostFoundPac(this);
                     break;
                 }
                 case STATES.STUNNED:
@@ -249,6 +258,16 @@ export class Ghost {
                     break;
                 }
                 case STATES.DEAD_GO_HOME: {
+                    let next = this.getNextCoordinates(SPEED.FAST);
+        
+                    if (next.x !== this.x || next.y !== this.y)
+                        this.goToNextCoords(next.x, next.y);
+                    else if (!this.checkArriveTheDestination())
+                        this.executeGoToDestination(this.destinationToGo.i, this.destinationToGo.j);
+                    else {
+                        this.howLongIsTheWait = this.renderWaitingTime; 
+                        this.startWaiting();
+                    }
                     break;
                 }
                 case STATES.DEAD: {
@@ -267,6 +286,18 @@ export class Ghost {
             let exceptions = [ { i: this.i(), j: this.j() } ];
             let limits = this.createLimitThisPositions(pacPos.i, pacPos.j);
             this.destinationToGo = this.game.map.getRandomIndexesBlock([BLOCK_TYPE.BISCUIT, BLOCK_TYPE.PILL], exceptions, limits);
+        }
+    }
+
+    public goToHomeBecauseDead() {
+        if (this.state === STATES.STUNNED || this.state === STATES.STUNNED_BLINK) {
+            this.state = STATES.DEAD_GO_HOME;
+            this.howLongIsTheWait = 0;
+            this.clearDestinationToGo();
+
+            let i = Helper.randomInterval(this.bornCoordI.begin, this.bornCoordI.end);
+            let j = Helper.randomInterval(this.bornCoordJ.begin, this.bornCoordJ.end);
+            this.destinationToGo = { i, j };
         }
     }
 
@@ -352,8 +383,7 @@ export class Ghost {
         else {
             this.x = Math.floor(this.j()) * this.size;
             this.y = Math.floor(this.i()) * this.size;
-            this.toX = this.x;
-            this.toY = this.y;
+            this.clearWalkCoordinates();
         }
     };
 
@@ -399,6 +429,10 @@ export class Ghost {
                     block !== BLOCK_TYPE.PORTAL &&
                     block !== BLOCK_TYPE.PORTAL_PATH &&
                     block !== BLOCK_TYPE.GHOST_HOUSE;
+        else if (this.state === STATES.DEAD_GO_HOME)
+            return block !== BLOCK_TYPE.WALL &&
+                    block !== BLOCK_TYPE.PORTAL &&
+                    block !== BLOCK_TYPE.PORTAL_PATH;
         else
             return block !== BLOCK_TYPE.WALL;
     }
@@ -462,19 +496,19 @@ export class Ghost {
 
     private checkArriveTheDestination(enter: boolean = false): boolean {
         if (this.destinationToGo && this.destinationToGo.i && this.destinationToGo.j) {
-
             if (enter) {
                 let diff = 0;
                 let i = this.y / this.size;
                 let j = this.x / this.size;
+
                 if (this.destinationToGo.i === i)
                     diff = Math.abs(this.destinationToGo.j - j);
-    
-                if (this.destinationToGo.j === j)
+                else if (this.destinationToGo.j === j)
                     diff = Math.abs(this.destinationToGo.i - i);
+                else
+                    return false;
     
-                if (diff > 0 && diff <= .5)
-                    return true;
+                return diff > 0 && diff <= .5;
             }
             else
                 return this.destinationToGo.i === this.i() && this.destinationToGo.j === this.j();
@@ -493,10 +527,6 @@ export class Ghost {
         if (this.destinationToGo && this.destinationToGo.i && this.destinationToGo.j) {
             if (this.checkCurrentDestinationToGoEquals(this.i(), this.j()))
                 return;
-
-            if (this.state === STATES.STUNNED) {
-                let teste = '';
-            }
 
             this.lastDestinationToGo = this.destinationToGo;
             let detination = this.lastDestinationToGo;

@@ -1,3 +1,7 @@
+.animated {
+    animation-duration: .5s;
+}
+
 html {
     display: table;
     width: 100vw;
@@ -5,29 +9,94 @@ html {
     font-family: 'Courier New', Courier, monospace;
 }
 
-html body {
+body {
     display: table-cell;
     vertical-align: middle;
+
+    > canvas {
+        display: block;
+        margin: auto;
+        transition-duration: .5s;
+    }
+
+    > .title {
+        display: block;
+        margin: auto;
+        text-align: center;
+
+        > h2 {
+            margin: 0;
+            font-size: 45px;
+            line-height: 1;
+        }
+        
+        > h6 {
+            margin: 0;
+            font-size: 20px;
+            line-height: 1;
+        }
+    }
+
+    * {
+        box-sizing: border-box;
+    }
 }
 
-body > canvas {
-    display: block;
-    margin: auto;
-}
+.suspended-window {
+    z-index: 999;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background: rgba(0, 0, 0, .5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    filter: blur(.4px);
 
-body > .title {
-    display: block;
-    margin: auto;
-    text-align: center;
-}
+    > section {
+        width: calc(var(--canvas-width) - 100px);
+        background: #FFF;
+        border-radius: 20px;
+        box-shadow: 0 0 25px rgba(#000, .5), 0 0 100px rgba(#FFF, .4);
+        padding: 25px 30px 30px 30px;
+        text-align: center;
+        border: 10px solid var(--game-gold);
+        
+        > h4 {
+            color: var(--game-blue);
+            margin: 0 0 25px 0;
+            font-size: 25px;
+            line-height: 1;
+        }
 
-body > .title > h2 {
-    margin: 0;
-    font-size: 45px;
-    line-height: 1;
-}
-body > .title > h6 {
-    margin: 0;
-    font-size: 20px;
-    line-height: 1;
+        > p {
+            color: #888;
+            margin: 0 0 50px 0;
+            font-size: 22px;
+            line-height: 1;
+        }
+
+        > button {
+            width: 100%;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            border: none;
+            background: var(--game-blue);
+            border-radius: 0 0 10px 10px;
+            padding: 15px 30px;
+            text-transform: uppercase;
+            color: #FFF;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 15px;
+            outline: none;
+        }
+    }
+
+    & ~ * {
+        filter: blur(5px);
+    }
 }

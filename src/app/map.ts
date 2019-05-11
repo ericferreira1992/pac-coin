@@ -592,41 +592,49 @@ export class Map {
     biscuitGettedByCoordinates(x: number, y: number, size?: number, direction?: any) {
         let indexes = this.getIndexesByCoordinates(x, y, size);
         let block = this.matriz[indexes.i][indexes.j];
-        let isBiscuit = block === BLOCK_TYPE.BISCUIT;
 
-        let directionInX = direction === DIRECTIONS.LEFT || direction === DIRECTIONS.RIGHT;
-        let directionInY = direction === DIRECTIONS.UP || direction === DIRECTIONS.DOWN;
-
-        if ((direction === DIRECTIONS.LEFT || (direction === DIRECTIONS.RIGHT && x >= indexes.j * size)) || (direction === DIRECTIONS.UP || (direction === DIRECTIONS.DOWN && y >= indexes.i * size))) {
-            if (direction === DIRECTIONS.UP)
-                y -= size;
-            else if (direction === DIRECTIONS.LEFT)
-                x -= size;
-
-            if (isBiscuit)
-                isBiscuit = (directionInX && x % size >= 5) || (directionInY && y % size >= 5);
+        if (block === BLOCK_TYPE.BISCUIT) {
+            let diff = 0;
+            let i = y / size;
+            let j = x / size;
             
-            return isBiscuit;
+            if (indexes.i === i)
+                diff = Math.abs(indexes.j - j);
+    
+            if (indexes.j === j)
+                diff = Math.abs(indexes.i - i);
+    
+            if ((direction === DIRECTIONS.UP || direction === DIRECTIONS.LEFT))
+                return diff > 0 && diff <= .5;
+            if ((direction === DIRECTIONS.DOWN || direction === DIRECTIONS.RIGHT))
+                return diff <= 0;
         }
+
+        return false;
     }
 
     pillGettedByCoordinates(x: number, y: number, size?: number, direction?: DIRECTIONS) {
         let indexes = this.getIndexesByCoordinates(x, y, size);
         let block = this.matriz[indexes.i][indexes.j];
-        let isPill = block === BLOCK_TYPE.PILL;
 
-        if (direction === DIRECTIONS.UP)
-            y -= size;
-        else if (direction === DIRECTIONS.LEFT)
-            x -= size;
+        if (block === BLOCK_TYPE.PILL) {
+            let diff = 0;
+            let i = y / size;
+            let j = x / size;
 
-        let directionInX = direction === DIRECTIONS.LEFT || direction === DIRECTIONS.RIGHT;
-        let directionInY = direction === DIRECTIONS.UP || direction === DIRECTIONS.DOWN;
+            if (indexes.i === i)
+                diff = Math.abs(indexes.j - j);
+    
+            if (indexes.j === j)
+                diff = Math.abs(indexes.i - i);
+    
+            if ((direction === DIRECTIONS.UP || direction === DIRECTIONS.LEFT))
+                return diff > 0 && diff <= .5;
+            if ((direction === DIRECTIONS.DOWN || direction === DIRECTIONS.RIGHT))
+                return diff <= 0;
+        }
 
-        if (isPill)
-            isPill = (directionInX && x % size >= 5) || (directionInY && y % size >= 5);
-        
-        return isPill;
+        return false;
     }
 
     public getRandomIndexesBlock(types: BLOCK_TYPE[], exceptions?: { i: number, j: number }[], limits?: { i: { begin: number, end: number }, j: { begin: number, end: number } }) {
@@ -648,6 +656,13 @@ export class Map {
             return (i >= limits.i.begin && i <= limits.i.end) && (j >= limits.j.begin && j <= limits.j.end);
         return false;
     }
+
+    directionIsX(direction?: DIRECTIONS) {
+        return direction === DIRECTIONS.LEFT || direction === DIRECTIONS.RIGHT;
+    };
+    directionIsY(direction?: string) {
+        return direction === DIRECTIONS.UP || direction === DIRECTIONS.DOWN;
+    };
 }
 
 

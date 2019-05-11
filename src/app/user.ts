@@ -15,19 +15,19 @@ export class User {
         this.reset();
     }
 
-    reset() {
+    private reset() {
         this.biscuitsGettedCoords = [];
         this.pillsGettedCoords = [];
     };
 
-    setBiscuitGetted(i: number, j: number) {
+    public setBiscuitGetted(i: number, j: number) {
         if (!this.biscuitIsGetted(i, j)) {
             this.biscuitsGettedCoords.push({ i, j });
             this.updateScores();
         }
     }
 
-    setPillGetted(i: number, j: number) {
+    public setPillGetted(i: number, j: number) {
         if (!this.pillIsGetted(i, j)) {
             this.pillsGettedCoords.push({ i, j });
             this.game.onPacGettedPill();
@@ -35,7 +35,7 @@ export class User {
         }
     }
 
-    biscuitIsGetted(i: number, j: number) {
+    public biscuitIsGetted(i: number, j: number) {
         var exists = false;
 
         for (var coord of this.biscuitsGettedCoords) {
@@ -48,7 +48,7 @@ export class User {
         return exists;
     }
 
-    pillIsGetted(i: number, j: number) {
+    public pillIsGetted(i: number, j: number) {
         var exists = false;
 
         for (var coord of this.pillsGettedCoords) {
@@ -61,7 +61,46 @@ export class User {
         return exists;
     }
 
-    updateScores() {
+    private createWindowElement(id: string) {
+        let windowEl = document.createElement('div');
+        windowEl.id = id;
+        windowEl.className = 'suspended-window animated fadeIn';
+        return windowEl;
+    }
+
+    public showLooseWindow() {
+        let loseWindowEl = this.createWindowElement('lose-window');
+        loseWindowEl.innerHTML = 
+        `
+            <section class="animated flipInX">
+                <h4>Você perdeu!</h4>
+
+                <p>
+                    Você não conseguiu pegar todas as coins<br/>
+                    antes que os fantasmas lhe pegassem.
+                </p>
+
+                <button onclick="restart()">
+                    Jogar novamente!
+                </button>
+            </section>
+        `;
+
+        document.body.prepend(loseWindowEl);
+    }
+
+    public closeLooseWindow() {
+        let loseWindowEl = document.getElementById('lose-window');
+
+        if (loseWindowEl) {
+            loseWindowEl.classList.remove('fadeIn');
+            loseWindowEl.classList.add('fadeOut');
+    
+            setTimeout(() => loseWindowEl.remove(), 500);
+        }
+    }
+
+    private updateScores() {
         this.biscuitsGetted = this.biscuitsGettedCoords.length;
         this.pillsGetted = this.pillsGettedCoords.length;
     };

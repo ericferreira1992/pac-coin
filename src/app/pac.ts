@@ -2,6 +2,8 @@ import { PacCoin } from './pac-coin';
 import { DIRECTIONS } from './enums';
 import { Helper } from './helper';
 
+import {STATES as GHOST_STATE} from './ghost';
+
 export class Pac {
     public game: PacCoin;
 
@@ -158,32 +160,36 @@ export class Pac {
     };
 
     onKeydown(event: any) {
-        if ([37, 38, 39, 40].indexOf(event.keyCode) >= 0 && !this.enteringPortal) {
-            var direction = this.getDirectionByCode(event.keyCode);
-            if (event.keyCode === 38) {
-                this.moveY(DIRECTIONS.UP);
-            }
-            else if (event.keyCode === 40) {
-                this.moveY(DIRECTIONS.DOWN);
-            }
-            else if (event.keyCode === 37) {
-                this.moveX(DIRECTIONS.LEFT);
-            }
-            else if (event.keyCode === 39) {
-                this.moveX(DIRECTIONS.RIGHT);
+        if (this.game.isRunning) {
+            if ([37, 38, 39, 40].indexOf(event.keyCode) >= 0 && !this.enteringPortal) {
+                var direction = this.getDirectionByCode(event.keyCode);
+                if (event.keyCode === 38) {
+                    this.moveY(DIRECTIONS.UP);
+                }
+                else if (event.keyCode === 40) {
+                    this.moveY(DIRECTIONS.DOWN);
+                }
+                else if (event.keyCode === 37) {
+                    this.moveX(DIRECTIONS.LEFT);
+                }
+                else if (event.keyCode === 39) {
+                    this.moveX(DIRECTIONS.RIGHT);
+                }
             }
         }
     };
 
     onKeyup(event: any) {
-        if ([37, 38, 39, 40].indexOf(event.keyCode) >= 0) {
-            if (!this.enteringPortal) {
-                var direction = this.getDirectionByCode(event.keyCode);
-
-                if (this.directionIsX(direction))
-                    this.stopMovimentX(direction);
-                else if (this.directionIsY(direction))
-                    this.stopMovimentY(direction);
+        if (this.game.isRunning) {
+            if ([37, 38, 39, 40].indexOf(event.keyCode) >= 0) {
+                if (!this.enteringPortal) {
+                    var direction = this.getDirectionByCode(event.keyCode);
+    
+                    if (this.directionIsX(direction))
+                        this.stopMovimentX(direction);
+                    else if (this.directionIsY(direction))
+                        this.stopMovimentY(direction);
+                }
             }
         }
     };
@@ -204,7 +210,32 @@ export class Pac {
             angle.direction
         );
         this.game.context.fill();
+
+        this.checkPacFoundGhostStunned();
     };
+
+    private checkPacFoundGhostStunned() {
+        if (this.game.isRunning) {
+            let i = this.y / this.size;
+            let j = this.x / this.size;
+            
+            let stunnedGhosts = this.game.ghosts.filter(x => (x.state === GHOST_STATE.STUNNED || x.state === GHOST_STATE.STUNNED_BLINK));
+            for (let ghost of stunnedGhosts) {
+                let diff = 0;
+    
+                if (ghost.i() === i)
+                    diff = Math.abs(ghost.j() - j);
+        
+                if (ghost.j() === j)
+                    diff = Math.abs(ghost.i() - i);
+        
+                if (diff > 0 && diff <= .5) {
+                    this.game.pacFoundStunnedGhost(ghost);
+                    break;
+                }
+            }
+        }
+    }
 
     stopMovimentX(directionToStop: any) {
         if (directionToStop === this.direction)
@@ -284,6 +315,7 @@ export class Pac {
 
     checkColisions() {
         var indexes = this.game.map.getIndexesByCoordinates(this.x, this.y, this.size);
+        
         if (this.game.map.biscuitGettedByCoordinates(this.x, this.y, this.size, this.direction)) {
             this.game.user.setBiscuitGetted(indexes.i, indexes.j);
         }
