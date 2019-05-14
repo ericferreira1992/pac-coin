@@ -14,4 +14,8 @@ export class Helper {
     public static getDecimalSide(value: number) {
         return (value - Math.floor(value));
     }
+
+    public static isMobileDevice() {
+        return (typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1);
+    }
 }

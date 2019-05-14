@@ -30,7 +30,7 @@ export class Pac {
         this.toY = this.y;
     }
     
-    i(round = false) {
+    public i(round = false) {
         var size = this.size;
         var y = this.y;
         
@@ -40,7 +40,7 @@ export class Pac {
         var i = Math.floor(y / size) + ((round && y % size) > 5 ? 1 : 0);
         return Math.min( i, this.game.map.matriz.length - 1);
     };
-    j(round = false) {
+    public j(round = false) {
         var size = this.size;
         var x = this.x;
         
@@ -51,7 +51,10 @@ export class Pac {
         return Math.min(j, this.game.map.matriz[0].length - 1);
     };
 
-    moveX(direction: any) {
+    public get iFractioned() { return this.y / this.size; }
+    public get jFractioned() { return this.x / this.size; }
+
+    private moveX(direction: any) {
         var changeOrientation = this.direction !== DIRECTIONS.LEFT && this.direction !== DIRECTIONS.RIGHT;
         var changeDirection = (this.direction === DIRECTIONS.LEFT || this.direction === DIRECTIONS.RIGHT) && this.direction !== direction;
 
@@ -78,8 +81,8 @@ export class Pac {
                 var moveToJ = currentIndexes.j + (this.direction === DIRECTIONS.RIGHT ? 1 : 0); 
                 var _toX = moveToJ * this.size;
 
-                if (!this.game.map.pacCanGo(_toX, this.y, this.size)) {
-                    if (currentX > this.size || currentX === 0)
+                if (this.game.map.pacCanGo(_toX, this.y, this.size)) {
+                    if (currentX === 0)
                         _toX += direction === DIRECTIONS.LEFT ? -this.size : 0;
 
                     if (this.x === this.toX && _toX > 0)
@@ -95,7 +98,7 @@ export class Pac {
             this.toY = this.y;
         }
     };
-    moveY(direction: any) {
+    private moveY(direction: any) {
         var changeOrientation = this.direction !== DIRECTIONS.UP && this.direction !== DIRECTIONS.DOWN;
         var changeDirection = (this.direction === DIRECTIONS.DOWN || this.direction === DIRECTIONS.UP) && this.direction !== direction;
 
@@ -122,9 +125,9 @@ export class Pac {
                 var moveToI = currentIndexes.i + (this.direction === DIRECTIONS.DOWN ? 1 : 0);
                 var _toY = moveToI * this.size;
 
-                if (!this.game.map.pacCanGo(this.x, _toY, this.size, this.direction)) {
-                    if (currentY > this.size || currentY === 0)
-                        _toY = _toY + (direction === DIRECTIONS.UP ? -this.size : 0);
+                if (this.game.map.pacCanGo(this.x, _toY, this.size)) {
+                    if (currentY === 0)
+                        _toY += _toY + (direction === DIRECTIONS.UP ? -this.size : 0);
 
                     if (this.y === this.toY && _toY > 0)
                         _toY += this.direction === DIRECTIONS.UP ? -this.size : this.size;
@@ -140,13 +143,23 @@ export class Pac {
         }
     };
 
-    getDirectionByCode(keyCode: any) {
+    public getDirectionByCode(keyCode: any) {
         switch(keyCode) {
             case 37: return DIRECTIONS.LEFT;
             case 38: return DIRECTIONS.UP;
             case 39: return DIRECTIONS.RIGHT;
             case 40: return DIRECTIONS.DOWN;
             default: return 'NONE';
+        }
+    };
+
+    public getCodeByDirection(direction: DIRECTIONS) {
+        switch(direction) {
+            case DIRECTIONS.LEFT: return 37;
+            case DIRECTIONS.UP: return 38;
+            case DIRECTIONS.RIGHT: return 39;
+            case DIRECTIONS.DOWN: return 40;
+            default: return 0;
         }
     };
 
@@ -162,7 +175,6 @@ export class Pac {
     onKeydown(event: any) {
         if (this.game.isRunning) {
             if ([37, 38, 39, 40].indexOf(event.keyCode) >= 0 && !this.enteringPortal) {
-                var direction = this.getDirectionByCode(event.keyCode);
                 if (event.keyCode === 38) {
                     this.moveY(DIRECTIONS.UP);
                 }
@@ -239,12 +251,12 @@ export class Pac {
 
     stopMovimentX(directionToStop: any) {
         if (directionToStop === this.direction)
-            this.toX = Math.max(Math.min(Math.floor(this.j(true)) * this.size, this.game.width - this.size), 0);
+            this.toX = Math.max(Math.min(Math.floor(this.j(this.direction === DIRECTIONS.RIGHT)) * this.size, this.game.width - this.size), 0);
     };
 
     stopMovimentY(directionToStop: any) {
         if (directionToStop === this.direction)
-            this.toY = Math.max(Math.min(Math.floor(this.i(true)) * this.size, this.game.height - this.size), 0);
+            this.toY = Math.max(Math.min(Math.floor(this.i(this.direction === DIRECTIONS.DOWN)) * this.size, this.game.height - this.size), 0);
     };
 
     updateCoordinates() {
@@ -254,8 +266,9 @@ export class Pac {
     
             if (!this.enteringPortal) {
                 if (nextX !== this.x || nextY !== this.y) {
-                    let canParseDirection = !Helper.hasDecimal(this.y / this.size) && !Helper.hasDecimal(this.x / this.size)
-                    if (!this.game.map.pacCanGo(nextX, nextY, this.size, canParseDirection ? this.direction : null)){
+                    // let canParseDirection = !Helper.hasDecimal(this.y / this.size) && !Helper.hasDecimal(this.x / this.size);
+                    // if (this.game.map.pacCanGo(nextX, nextY, this.size, canParseDirection ? this.direction : null)){
+                    if (this.game.map.pacCanGo(nextX, nextY, this.size)){
                         this.x = nextX;
                         this.y = nextY;
     
@@ -314,7 +327,7 @@ export class Pac {
     };
 
     checkColisions() {
-        var indexes = this.game.map.getIndexesByCoordinates(this.x, this.y, this.size);
+        var indexes = this.game.map.getIndexesByCoordinates(this.x, this.y, this.size, this.direction);
         
         if (this.game.map.biscuitGettedByCoordinates(this.x, this.y, this.size, this.direction)) {
             this.game.user.setBiscuitGetted(indexes.i, indexes.j);

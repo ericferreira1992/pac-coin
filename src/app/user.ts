@@ -1,4 +1,4 @@
-import { PacCoin } from './pac-coin';
+import { PacCoin, GAME_STATE } from './pac-coin';
 import { BLOCK_TYPE } from './map';
 
 export class User {
@@ -91,7 +91,11 @@ export class User {
                     antes que os fantasmas lhe pegassem.
                 </p>
 
-                <button onclick="restart()">
+                <button class="yellow" onclick="game.showHowToPlayWindow()">
+                    Botões do jogo
+                </button>
+
+                <button onclick="game.restart()">
                     Jogar novamente!
                 </button>
             </section>
@@ -112,12 +116,15 @@ export class User {
                 <h1>Pac-coin</h1>
 
                 <p>
-                    <span><strong>Bem-vindo!</strong></span>
                     Fuja dos fantasmas e pegue todas as <i>coins</i><br/>
                     que encontrar pelo caminho.
                 </p>
 
-                <button onclick="resume()">
+                <button class="yellow" onclick="game.showHowToPlayWindow()">
+                    Botões do jogo
+                </button>
+
+                <button onclick="game.resume()">
                     Jogar
                 </button>
             </section>
@@ -142,7 +149,7 @@ export class User {
                     que os fantasmas o pegassem.
                 </p>
 
-                <button onclick="restart()">
+                <button onclick="game.restart()">
                     Jogar novamente
                 </button>
             </section>
@@ -155,9 +162,62 @@ export class User {
         this.removeWindowElement('start-game-window');
     }
 
+    public showHowToPlayWindow() {
+        this.closeAllOpenedWindows();
+
+        let loseWindowEl = this.createWindowElement('how-to-play-window');
+
+        let button = '';
+        if (this.game.state === GAME_STATE.GHOST_FOUND_PAC)
+            button = `
+            <button onclick="game.restart()">
+                Jogar novamente
+            </button>`;
+        else
+            button = `
+            <button onclick="game.resume()">
+                Jogar
+            </button>`;
+
+        loseWindowEl.innerHTML = 
+        `
+            <section class="animated zoomIn">
+                <h4>Botões do jogo</h4>
+
+                <ul>
+                    <li>
+                        <i class="key key-up"></i>
+                        <span>Move para <strong>CIMA</strong></span>
+                    </li>
+                    <li>
+                        <i class="key key-down"></i>
+                        <span>Move para <strong>BAIXO</strong></span>
+                    </li>
+                    <li>
+                        <i class="key key-left"></i>
+                        <span>Move para <strong>ESQUERDA</strong></span>
+                    </li>
+                    <li>
+                        <i class="key key-right"></i>
+                        <span>Move para <strong>DIREITA</strong></span>
+                    </li>
+                </ul>
+
+                ${button}
+            </section>
+        `;
+
+        document.body.prepend(loseWindowEl);
+    }
+
+    public closeHowToPlayWindow() {
+        this.removeWindowElement('how-to-play-window');
+    }
+
     public closeAllOpenedWindows() {
         this.closeLooseWindow();
         this.closeStartGameWindow();
+        this.closeHowToPlayWindow();
     }
 
     private gettedAllBiscuitsAndPills() {

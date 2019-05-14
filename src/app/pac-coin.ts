@@ -2,11 +2,13 @@ import { Map } from './map';
 import { Pac } from './pac';
 import { User } from './user';
 import { Ghost } from './ghost';
+import { Helper } from './helper';
+import { DIRECTIONS } from './enums';
 
 export class PacCoin {
     public blockSize = 26;
     public moveRate = 5;
-    public timeToRerender = 10;
+    public timeToRerender = 30;
 
     public state: GAME_STATE;
 
@@ -104,6 +106,7 @@ export class PacCoin {
         this.defineSizeVarsStyle();
         this.createTitle();
         this.createFooter();
+        this.createMobileControl();
 
         this.context = this.canvas.getContext('2d');
     }
@@ -146,6 +149,102 @@ export class PacCoin {
         this.canvas.insertAdjacentHTML('afterend', footerHtml);
     }
 
+    private createMobileControl() {
+        if (Helper.isMobileDevice()) {
+            let controlHtml = `
+            <div class="mobile-control">
+                <div id="mobile-control-move"></div>
+            </div>`;
+            this.canvas.insertAdjacentHTML('afterend', controlHtml);
+
+            let moveEl = document.getElementById('mobile-control-move');
+
+            let initX = moveEl.getBoundingClientRect().left;
+            let initY = moveEl.getBoundingClientRect().top;
+            let direction = DIRECTIONS.NONE;
+
+            let minDistance = 30;
+            let toucheState = 'NONE';
+
+            document.body.ontouchstart = (touchEvent) => {
+                let event = touchEvent.touches[0];
+
+                if (toucheState === 'NONE') {
+                    initX = event.pageX;
+                    initY = event.pageY;
+    
+                    toucheState = 'START';
+                }
+                else {
+                    touchEvent.cancelBubble = true;
+                    touchEvent.preventDefault();
+                    return false;
+                }
+            }
+            document.body.ontouchmove = (touchEvent) => {
+                let event = touchEvent.touches[0];
+
+                if (toucheState === 'START' || toucheState === 'MOVING') {
+                    toucheState = 'MOVING';
+
+                    let directionX = DIRECTIONS.NONE;
+                    let directionY = DIRECTIONS.NONE;
+                    let diffX = 0;
+                    let diffY = 0;
+
+                    if (event.pageX > initX) {
+                        diffX = event.pageX - initX;
+                        moveEl.style.left = `calc(50% + ${diffX}px)`;
+
+                        if (diffX >= minDistance)
+                            directionX = DIRECTIONS.RIGHT;
+                    }
+                    else {
+                        diffX = initX - event.pageX;
+                        moveEl.style.left = `calc(50% - ${diffX}px)`;
+
+                        if (diffX >= minDistance)
+                            directionX = DIRECTIONS.LEFT;
+                    }
+
+                    if (event.pageY > initY) {
+                        diffY = event.pageY - initY;
+                        moveEl.style.top = `calc(50% + ${diffY}px)`;
+
+                        if (diffY >= minDistance)
+                            directionY = DIRECTIONS.DOWN;
+                    }
+                    else {
+                        diffY = initY - event.pageY;
+                        moveEl.style.top = `calc(50% - ${diffY}px)`;
+
+                        if (diffY >= minDistance)
+                            directionY = DIRECTIONS.UP;
+                    }
+
+                    if (diffX >= minDistance || diffY >= minDistance) {
+                        if (diffX > diffY)
+                            direction = directionX;
+                        else
+                            direction = directionY;
+
+                        this.pac.onKeydown({ keyCode: this.pac.getCodeByDirection(direction) });
+                    }
+                    else
+                        direction = DIRECTIONS.NONE;
+                }
+            }
+            document.body.ontouchend = () => {
+                toucheState = 'NONE';
+                moveEl.style.left = '50%';
+                moveEl.style.top = '50%';
+
+                if (direction !== DIRECTIONS.NONE)
+                    this.pac.onKeyup({ keyCode: this.pac.getCodeByDirection(direction) });
+            }
+        }
+    }
+
     private makeListeners () {
         document.onkeydown = (event) => {
             this.pac.onKeydown(event);
@@ -171,13 +270,11 @@ export class PacCoin {
         this.showLooseWindow();
     }
 
-    public showLooseWindow() {
-        this.user.showLooseWindow();
-    }
+    public showLooseWindow() { this.user.showLooseWindow(); }
+    public closeLooseWindow() { this.user.closeLooseWindow(); }
 
-    public closeLooseWindow() {
-        this.user.closeLooseWindow();
-    }
+    public showHowToPlayWindow() { this.user.showHowToPlayWindow(); }
+    public closeHowToPlayWindow() { this.user.closeHowToPlayWindow(); }
 
     public closeAllOpenedWindows() {
         this.user.closeAllOpenedWindows();
@@ -194,7 +291,7 @@ export class PacCoin {
     }
 
     public applySmoothCoord (fromPosition: number, toPosition: number, customRate?: number) {
-        let rate = customRate ? customRate : 1;
+        let rate = customRate ? customRate : 2.5;
         if (fromPosition !== toPosition) {
             let newPosition = fromPosition + ((fromPosition < toPosition) ? rate : -rate);
             if (fromPosition < toPosition && newPosition > toPosition)

@@ -43,8 +43,8 @@ export class Ghost {
 
     public howLongIsTheWait = 0;
 
-    public destinationToGo: any = null;
-    public lastDestinationToGo: any = null;
+    public destinationToGo: { i: number, j: number, exact: { i: number, j: number } } = null;
+    public lastDestinationToGo: { i: number, j: number, exact: { i: number, j: number } } = null;
     public arrayDirectionsToGo: any[] = [];
 
     constructor(game: PacCoin, name: string) {
@@ -207,7 +207,17 @@ export class Ghost {
                     break;
                 }
                 case STATES.HUNTING: {
-                    if (!this.checkArriveTheDestination(true)) {
+                    let alternativePositions = null;
+                    let toGo = this.destinationToGo;
+                    let pecCurrenctPositions = {
+                        i: this.game.pac.iFractioned,
+                        j: this.game.pac.jFractioned
+                    };
+
+                    if (toGo && (toGo.exact.i !== pecCurrenctPositions.i || toGo.exact.j !== pecCurrenctPositions.j))
+                        alternativePositions = pecCurrenctPositions;
+
+                    if (!this.checkArriveTheDestination(true, alternativePositions)) {
                         let next = this.getNextCoordinates(SPEED.NORMAL);
         
                         if (next.x !== this.x || next.y !== this.y)
@@ -215,7 +225,9 @@ export class Ghost {
                         else {
                             let pacI = this.game.pac.i();
                             let pacJ = this.game.pac.j();
-                            this.executeGoToDestination(pacI, pacJ);
+                            let pacIFractioned = this.game.pac.iFractioned;
+                            let pacJFractioned = this.game.pac.jFractioned;
+                            this.executeGoToDestination(pacI, pacJ, { i: pacIFractioned, j: pacJFractioned });
                         }
                     }
                     else 
@@ -286,7 +298,15 @@ export class Ghost {
             let pacPos = { i: this.game.pac.i(), j: this.game.pac.j() };
             let exceptions = [ { i: this.i(), j: this.j() } ];
             let limits = this.createLimitThisPositions(pacPos.i, pacPos.j);
-            this.destinationToGo = this.game.map.getRandomIndexesBlock([BLOCK_TYPE.BISCUIT, BLOCK_TYPE.PILL], exceptions, limits);
+            let positions = this.game.map.getRandomIndexesBlock([BLOCK_TYPE.BISCUIT, BLOCK_TYPE.PILL], exceptions, limits);
+            this.destinationToGo = {
+                i: positions.i,
+                j: positions.j,
+                exact: {
+                    i: positions.i,
+                    j: positions.j
+                }
+            }
         }
     }
 
@@ -298,7 +318,14 @@ export class Ghost {
 
             let i = Helper.randomInterval(this.bornCoordI.begin, this.bornCoordI.end);
             let j = Helper.randomInterval(this.bornCoordJ.begin, this.bornCoordJ.end);
-            this.destinationToGo = { i, j };
+            this.destinationToGo = { 
+                i,
+                j,
+                exact: {
+                    i,
+                    j
+                }
+            };
         }
     }
 
@@ -321,7 +348,7 @@ export class Ghost {
         this.toY = this.y;
     }
 
-    private executeGoToDestination(i: number, j: number) {
+    private executeGoToDestination(i: number, j: number, exact?: { i: number, j: number }) {
         if (!this.arrayDirectionsToGo.length ||
             !this.lastDestinationToGo ||
             this.lastDestinationToGo.i !== i ||
@@ -331,8 +358,9 @@ export class Ghost {
             this.arrayDirectionsToGo = [];
             this.lastDestinationToGo = null;
             this.destinationToGo = {
-                i: i,
-                j: j
+                i,
+                j,
+                exact
             };
 
             this.goToDestination(lastNextDirection);
@@ -495,24 +523,40 @@ export class Ghost {
         }
     };
 
-    private checkArriveTheDestination(enter: boolean = false): boolean {
-        if (this.destinationToGo && this.destinationToGo.i && this.destinationToGo.j) {
+    private checkArriveTheDestination(enter: boolean = false, alternativePositions?: { i: number, j: number }): boolean {
+        if (this.destinationToGo || alternativePositions) {
             if (enter) {
                 let diff = 0;
                 let i = this.y / this.size;
                 let j = this.x / this.size;
 
-                if (this.destinationToGo.i === i)
-                    diff = Math.abs(this.destinationToGo.j - j);
-                else if (this.destinationToGo.j === j)
-                    diff = Math.abs(this.destinationToGo.i - i);
+                let toGo;
+
+                if (alternativePositions)
+                    toGo = alternativePositions;
                 else
-                    return false;
-    
-                return diff > 0 && diff <= .5;
+                    toGo = this.destinationToGo.exact ? this.destinationToGo.exact : this.destinationToGo;
+
+                let iDest = toGo.i;
+                let jDest = toGo.j;
+
+                if (i !== iDest || j !== jDest) {
+                    if (iDest === i)
+                        diff = Math.abs(jDest - j);
+                    else if (jDest === j)
+                        diff = Math.abs(iDest - i);
+                    else
+                        return false;
+
+                    return diff >= 0 && diff <= .5;
+                }
+
+                return true;
             }
-            else
-                return this.destinationToGo.i === this.i() && this.destinationToGo.j === this.j();
+            else {
+                let toGo = alternativePositions ? alternativePositions : this.destinationToGo;
+                return toGo.i === this.i() && toGo.j === this.j();
+            }
         };
 
         return false;
@@ -703,9 +747,9 @@ export class Ghost {
 }
  
 export enum SPEED {
-    NORMAL = .8,
-    FAST = 1.5,
-    SLOW = .5,
+    NORMAL = 2,
+    FAST = 2.5,
+    SLOW = 1.5,
 };
  
 export enum STATES {

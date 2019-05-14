@@ -555,16 +555,15 @@ export class Map {
     isCollidingWithWall(x: number, y: number, size?: number, direction?: any) {
         let indexes = this.getIndexesByCoordinates(x, y, size, direction);
         let block = this.matriz[indexes.i][indexes.j];
+
         return block === BLOCK_TYPE.WALL;
     }
 
     pacCanGo(x: number, y: number, size?: number, direction?: any) {
         let indexes = this.getIndexesByCoordinates(x, y, size, direction);
         let block = this.matriz[indexes.i][indexes.j];
-        return [
-            BLOCK_TYPE.WALL,
-            BLOCK_TYPE.GHOST_HOUSE
-        ].indexOf(block) >= 0;
+
+        return [ BLOCK_TYPE.WALL, BLOCK_TYPE.GHOST_HOUSE ].every(x => block !== x);
     }
 
     xCoordinateIsEnd(x: number, y: number) {
@@ -590,48 +589,50 @@ export class Map {
     }
 
     biscuitGettedByCoordinates(x: number, y: number, size?: number, direction?: any) {
-        let indexes = this.getIndexesByCoordinates(x, y, size);
-        let block = this.matriz[indexes.i][indexes.j];
-
-        if (block === BLOCK_TYPE.BISCUIT) {
-            let diff = 0;
-            let i = y / size;
-            let j = x / size;
+        if (this.getBlockByCoordinates(x, y, size, direction) === BLOCK_TYPE.BISCUIT) {
+            let iDest = y / size;
+            let jDest = x / size;
             
-            if (indexes.i === i)
-                diff = Math.abs(indexes.j - j);
-    
-            if (indexes.j === j)
-                diff = Math.abs(indexes.i - i);
-    
-            if ((direction === DIRECTIONS.UP || direction === DIRECTIONS.LEFT))
-                return diff > 0 && diff <= .5;
-            if ((direction === DIRECTIONS.DOWN || direction === DIRECTIONS.RIGHT))
-                return diff <= 0;
+            let i = this.getIndexesByCoordinates(x, y, size, direction).i;
+            let j = this.getIndexesByCoordinates(x, y, size, direction).j;
+            
+            if (i !== iDest || j !== jDest) {
+                let diff = 0;
+
+                if (iDest === i)
+                    diff = Math.abs(jDest - j);
+                else if (jDest === j)
+                    diff = Math.abs(iDest - i);
+                else
+                    return false;
+
+                return diff >= 0 && diff <= .5;
+            }
         }
 
         return false;
     }
 
     pillGettedByCoordinates(x: number, y: number, size?: number, direction?: DIRECTIONS) {
-        let indexes = this.getIndexesByCoordinates(x, y, size);
-        let block = this.matriz[indexes.i][indexes.j];
+        if (this.getBlockByCoordinates(x, y, size, direction) === BLOCK_TYPE.PILL) {
+            let iDest = y / size;
+            let jDest = x / size;
+            
+            let i = this.getIndexesByCoordinates(x, y, size, direction).i;
+            let j = this.getIndexesByCoordinates(x, y, size, direction).j;
+            
+            if (i !== iDest || j !== jDest) {
+                let diff = 0;
 
-        if (block === BLOCK_TYPE.PILL) {
-            let diff = 0;
-            let i = y / size;
-            let j = x / size;
+                if (iDest === i)
+                    diff = Math.abs(jDest - j);
+                else if (jDest === j)
+                    diff = Math.abs(iDest - i);
+                else
+                    return false;
 
-            if (indexes.i === i)
-                diff = Math.abs(indexes.j - j);
-    
-            if (indexes.j === j)
-                diff = Math.abs(indexes.i - i);
-    
-            if ((direction === DIRECTIONS.UP || direction === DIRECTIONS.LEFT))
-                return diff > 0 && diff <= .5;
-            if ((direction === DIRECTIONS.DOWN || direction === DIRECTIONS.RIGHT))
-                return diff <= 0;
+                return diff >= 0 && diff <= .5;
+            }
         }
 
         return false;
