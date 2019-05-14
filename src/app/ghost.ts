@@ -142,7 +142,8 @@ export class Ghost {
     }
 
     render(){
-        this.updateRenderWaitingTime();
+        if (this.game.isRunning)
+            this.updateRenderWaitingTime();
 
         if (this.canRender()) {
             this.updateCoordinates();
@@ -598,15 +599,23 @@ export class Ghost {
                                     destDirectionX = destX < x ? DIRECTIONS.LEFT : DIRECTIONS.RIGHT;
                                     destDirectionY = destY < y ? DIRECTIONS.UP : DIRECTIONS.DOWN;
             
-                                    if (Helper.randomInterval(1, 999) % 2 > 0)
-                                        direction = (diffDistanceX > diffDistanceY) ? destDirectionX : destDirectionY;
-                                    else
-                                        direction = (diffDistanceX > diffDistanceY) ? destDirectionY : destDirectionX;
+                                    if (this.state !== STATES.DEAD_GO_HOME) {
+                                        if (Helper.randomInterval(1, 999) % 2 > 0)
+                                            direction = (diffDistanceX > diffDistanceY) ? destDirectionX : destDirectionY;
+                                        else
+                                            direction = (diffDistanceX > diffDistanceY) ? destDirectionY : destDirectionX;
+                                    }
+                                    else {
+                                        if (diffDistanceX === 0)
+                                            direction = destDirectionY;
+                                        else if (diffDistanceY === 0)
+                                            direction = destDirectionX;
+                                        else
+                                            direction = (diffDistanceX > diffDistanceY) ? destDirectionX : destDirectionY;
+                                    }
 
                                     if (isReturning(direction))
                                         direction = this.directionIsX(direction) ? destDirectionY : destDirectionX;
-
-                                    
                                     
                                     if (lastDirection === direction && direction !== destDirectionX && direction !== destDirectionY)
                                         direction = this.directionIsX(direction) ? destDirectionY : destDirectionX;
@@ -638,10 +647,6 @@ export class Ghost {
                     }
                 }
             }
-
-            /* if (arrayDirections.length > 0) {
-                if (this.directionIsX(arrayDirections[0]) && )
-            } */
 
             this.arrayDirectionsToGo = arrayDirections;
         }

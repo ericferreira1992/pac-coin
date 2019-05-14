@@ -38,9 +38,10 @@ export class PacCoin {
     
     constructor() {
         this.coinImg.src = 'assets/img/sb-coin.svg';
+        this.state = GAME_STATE.STOPPED;
     }
 
-    public start() {
+    public start(restarting: boolean = false) {
         this.map = new Map(this);
         this.pac = new Pac(this);
         this.user = new User(this);
@@ -60,7 +61,13 @@ export class PacCoin {
             this.makeListeners();
         }
 
-        this.state = GAME_STATE.RUNNING;
+        if (!restarting) {
+            this.user.showStartGameWindow();
+            this.state = GAME_STATE.STOPPED;
+        }
+        else
+            setTimeout(() => this.state = GAME_STATE.RUNNING, 500);
+
         this.runGameLoop();
         this.loop = setInterval(this.runGameLoop.bind(this), this.timeToRerender);
 
@@ -70,7 +77,20 @@ export class PacCoin {
     public restart() {
         clearInterval(this.loop);
         this.closeAllOpenedWindows();
-        this.start();
+        this.start(true);
+    }
+
+    public resume(withRestart: boolean = false) {
+        if (withRestart)
+            this.restart();
+        else {
+            this.closeAllOpenedWindows();
+            setTimeout(() => this.state = GAME_STATE.RUNNING, 500);
+        }
+    }
+
+    public stop() {
+        this.state = GAME_STATE.STOPPED;
     }
 
     private createCanvas() {
@@ -83,6 +103,7 @@ export class PacCoin {
 
         this.defineSizeVarsStyle();
         this.createTitle();
+        this.createFooter();
 
         this.context = this.canvas.getContext('2d');
     }
@@ -109,6 +130,20 @@ export class PacCoin {
             '</h6>'+
         '</div>';
         this.canvas.insertAdjacentHTML('beforebegin', titleHtml);
+    }
+
+    private createFooter() {
+        let footerHtml = `
+        <div class="footer" style="max-width: ${this.width}px">
+            <p>Criado por Eric Andrade Ferreira</p>
+            <p>
+                Código fonte no 
+                <a href="https://github.com/ericferreira1992/pac-coin" target="_blank">
+                    Github
+                </a>
+            </p>
+        </div>`;
+        this.canvas.insertAdjacentHTML('afterend', footerHtml);
     }
 
     private makeListeners () {
@@ -145,7 +180,7 @@ export class PacCoin {
     }
 
     public closeAllOpenedWindows() {
-        this.user.closeLooseWindow();
+        this.user.closeAllOpenedWindows();
     }
 
     public pacFoundStunnedGhost(ghost: Ghost) {
@@ -173,6 +208,7 @@ export class PacCoin {
 }
 
 export enum GAME_STATE {
+    STOPPED = 'STOPPED',
     RUNNING = 'RUNNING',
     PAUSED = 'PAUSED',
     GHOST_FOUND_PAC = 'GHOST_FOUND_PAC',
