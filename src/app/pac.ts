@@ -3,6 +3,8 @@ import { DIRECTIONS } from './enums';
 import { Helper } from './helper';
 
 import {STATES as GHOST_STATE} from './ghost';
+import { BLOCK_TYPE } from './map';
+import { isNullOrUndefined } from 'util';
 
 export class Pac {
     public game: PacCoin;
@@ -55,91 +57,62 @@ export class Pac {
     public get jFractioned() { return this.x / this.size; }
 
     private moveX(direction: any) {
-        var changeOrientation = this.direction !== DIRECTIONS.LEFT && this.direction !== DIRECTIONS.RIGHT;
-        var changeDirection = (this.direction === DIRECTIONS.LEFT || this.direction === DIRECTIONS.RIGHT) && this.direction !== direction;
-
-        if (changeOrientation && this.y !== this.toY) {
-            this.toY = Math.floor(this.i(true)) * this.size;
-            this.directionAfterEnd = direction;
-            return;
-        }
-        else
-            this.directionAfterEnd = null;
-
-        if (!changeOrientation || this.y === this.toY) {
-            this.direction = direction;
-
-            if (changeDirection)
-                this.toX = this.x;
-
-            var currentX = this.x;
-
-            if ((this.direction === DIRECTIONS.LEFT && !this.game.map.xCoordinateIsBegin(currentX, this.y)) ||
-                (this.direction === DIRECTIONS.RIGHT && !this.game.map.xCoordinateIsEnd(currentX, this.y)))
-            {
-                var currentIndexes = this.game.map.getIndexesByCoordinates(currentX, this.y, this.size, this.direction);
-                var moveToJ = currentIndexes.j + (this.direction === DIRECTIONS.RIGHT ? 1 : 0); 
-                var _toX = moveToJ * this.size;
-
-                if (this.game.map.pacCanGo(_toX, this.y, this.size)) {
-                    if (currentX === 0)
-                        _toX += direction === DIRECTIONS.LEFT ? -this.size : 0;
-
-                    if (this.x === this.toX && _toX > 0)
-                        _toX += this.direction === DIRECTIONS.LEFT ? -this.size : this.size;
-
-                    this.enteringPortal = this.direction === DIRECTIONS.LEFT ? (_toX < 0) : (_toX > this.game.width);
-
-                    this.toX = _toX;
-                }
-                else if (changeDirection)
-                    this.toX =  currentIndexes.j * this.size;
+        if (direction !== this.direction && direction !== this.directionAfterEnd) {
+            var changeOrientation = this.direction !== DIRECTIONS.LEFT && this.direction !== DIRECTIONS.RIGHT;
+            var changeDirection = (this.direction === DIRECTIONS.LEFT || this.direction === DIRECTIONS.RIGHT) && this.direction !== direction;
+            let lastDirection = this.direction;
+    
+            if (changeOrientation) {
+                this.directionAfterEnd = direction;
+                return;
             }
-            this.toY = this.y;
+            else {
+                this.directionAfterEnd = null;
+                this.direction = direction;
+
+                if (changeDirection) {
+                    if (this.x !== this.toX) {
+                        if (lastDirection === DIRECTIONS.LEFT)
+                            this.toX = (Math.floor(this.toX / this.size) + 1) * this.size;
+                        else
+                            this.toX = (Math.floor(this.toX / this.size) - 1) * this.size;
+                    }
+                }
+                /* if (changeDirection && !changeOrientation) {
+                    this.direction = direction;
+                    this.toY = (this.i(lastDirection === DIRECTIONS.UP) * this.size);
+                }  */
+            }
         }
     };
     private moveY(direction: any) {
-        var changeOrientation = this.direction !== DIRECTIONS.UP && this.direction !== DIRECTIONS.DOWN;
-        var changeDirection = (this.direction === DIRECTIONS.DOWN || this.direction === DIRECTIONS.UP) && this.direction !== direction;
+        if (direction !== this.direction && direction !== this.directionAfterEnd) {
+            var changeOrientation = this.direction !== DIRECTIONS.UP && this.direction !== DIRECTIONS.DOWN;
+            var changeDirection = (this.direction === DIRECTIONS.DOWN || this.direction === DIRECTIONS.UP) && this.direction !== direction;
+            let lastDirection = this.direction;
 
-        if (changeOrientation && this.x !== this.toX) {
-            this.toX = Math.floor(this.j(true)) * this.size;
-            this.directionAfterEnd = direction;
-            return;
-        }
-        else
-            this.directionAfterEnd = null;
-
-        if (!changeOrientation || this.x === this.toX) {
-            this.direction = direction;
-
-            if (changeDirection)
-                this.toY = this.y;
-
-            var currentY = this.y;
-
-            if ((this.direction === DIRECTIONS.UP && !this.game.map.yCoordinateIsBegin(currentY)) ||
-                (this.direction === DIRECTIONS.DOWN && !this.game.map.yCoordinateIsEnd(currentY)))
-            {
-                var currentIndexes = this.game.map.getIndexesByCoordinates(this.x, currentY, this.size, this.direction);
-                var moveToI = currentIndexes.i + (this.direction === DIRECTIONS.DOWN ? 1 : 0);
-                var _toY = moveToI * this.size;
-
-                if (this.game.map.pacCanGo(this.x, _toY, this.size)) {
-                    if (currentY === 0)
-                        _toY += _toY + (direction === DIRECTIONS.UP ? -this.size : 0);
-
-                    if (this.y === this.toY && _toY > 0)
-                        _toY += this.direction === DIRECTIONS.UP ? -this.size : this.size;
-
-                    this.enteringPortal = (this.direction.toString() === DIRECTIONS.LEFT) ? (_toY < 0) : (_toY > this.game.height);
-
-                    this.toY = _toY;
-                }
-                else if (changeDirection)
-                    this.toY =  currentIndexes.i * this.size;
+            if (changeOrientation) {
+                this.directionAfterEnd = direction;
+                return;
             }
-            this.toX = this.x;
+            else {
+                this.directionAfterEnd = null;
+                this.direction = direction;    
+
+                if (changeDirection) {
+                    if (this.y !== this.toY) {
+                        if (lastDirection === DIRECTIONS.UP)
+                            this.toY = (Math.floor(this.toY / this.size) + 1) * this.size;
+                        else
+                            this.toY = (Math.floor(this.toY / this.size) - 1) * this.size;
+                    }
+                } 
+
+                /* if (changeDirection && !changeOrientation) {
+                    this.direction = direction;
+                    this.toY = (this.i(lastDirection === DIRECTIONS.UP) * this.size);
+                }  */
+            }
         }
     };
 
@@ -175,33 +148,14 @@ export class Pac {
     onKeydown(event: any) {
         if (this.game.isRunning) {
             if ([37, 38, 39, 40].indexOf(event.keyCode) >= 0 && !this.enteringPortal) {
-                if (event.keyCode === 38) {
+                if (event.keyCode === 38)
                     this.moveY(DIRECTIONS.UP);
-                }
-                else if (event.keyCode === 40) {
+                else if (event.keyCode === 40)
                     this.moveY(DIRECTIONS.DOWN);
-                }
-                else if (event.keyCode === 37) {
+                else if (event.keyCode === 37)
                     this.moveX(DIRECTIONS.LEFT);
-                }
-                else if (event.keyCode === 39) {
+                else if (event.keyCode === 39)
                     this.moveX(DIRECTIONS.RIGHT);
-                }
-            }
-        }
-    };
-
-    onKeyup(event: any) {
-        if (this.game.isRunning) {
-            if ([37, 38, 39, 40].indexOf(event.keyCode) >= 0) {
-                if (!this.enteringPortal) {
-                    var direction = this.getDirectionByCode(event.keyCode);
-    
-                    if (this.directionIsX(direction))
-                        this.stopMovimentX(direction);
-                    else if (this.directionIsY(direction))
-                        this.stopMovimentY(direction);
-                }
             }
         }
     };
@@ -266,8 +220,6 @@ export class Pac {
     
             if (!this.enteringPortal) {
                 if (nextX !== this.x || nextY !== this.y) {
-                    // let canParseDirection = !Helper.hasDecimal(this.y / this.size) && !Helper.hasDecimal(this.x / this.size);
-                    // if (this.game.map.pacCanGo(nextX, nextY, this.size, canParseDirection ? this.direction : null)){
                     if (this.game.map.pacCanGo(nextX, nextY, this.size)){
                         this.x = nextX;
                         this.y = nextY;
@@ -275,18 +227,20 @@ export class Pac {
                         this.checkColisions();
                     }
                     else {
-                        this.x = Math.floor(this.j()) * this.size;
-                        this.y = Math.floor(this.i()) * this.size;
+                        console.log('DEU RUIM');
+                        this.x = this.j(this.direction === DIRECTIONS.LEFT) * this.size;
+                        this.y = this.i(this.direction === DIRECTIONS.UP) * this.size;
                         this.toX = this.x;
                         this.toY = this.y
                     }
                 }
                 else {
-                    if (this.directionAfterEnd) {
-                        if (this.directionAfterEnd === DIRECTIONS.LEFT || this.directionAfterEnd === DIRECTIONS.RIGHT)
-                            this.moveX(this.directionAfterEnd);
-                        else
-                            this.moveY(this.directionAfterEnd);
+                    if (this.directionAfterEnd && this.canGoInTheDirection(this.directionAfterEnd))
+                        this.direction = this.directionAfterEnd;
+                    
+                    if (this.canGoInTheDirection(this.direction)) {
+                        this.goToTheDirection(this.direction);
+                        this.updateCoordinates();
                     }
                 }
             }
@@ -325,6 +279,41 @@ export class Pac {
             }
         }
     };
+
+    goToTheDirection(direction: DIRECTIONS) {
+        this.direction = direction;
+
+        if (direction === DIRECTIONS.UP)
+            this.toY = this.y - this.size;
+        else if (direction === DIRECTIONS.DOWN)
+            this.toY = this.y + this.size;
+        else if (direction === DIRECTIONS.LEFT)
+            this.toX = this.x - this.size;
+        else if (direction === DIRECTIONS.RIGHT)
+            this.toX = this.x + this.size;
+    }
+
+    canGoInTheDirection(direction: string, x?: number, y?: number, limit?: any) {
+        if (direction !== DIRECTIONS.NONE) {
+            if (isNullOrUndefined(x))
+                x = this.x;
+            if (isNullOrUndefined(y))
+                y = this.y;
+
+            if (direction === DIRECTIONS.UP)
+                y -= this.size;
+            else if (direction === DIRECTIONS.DOWN)
+                y += this.size;
+            else if (direction === DIRECTIONS.LEFT)
+                x -= this.size;
+            else if (direction === DIRECTIONS.RIGHT)
+                x += this.size;
+
+            let block = this.game.map.getBlockByCoordinates(x, y, this.size);
+            return [ BLOCK_TYPE.WALL, BLOCK_TYPE.GHOST_HOUSE ].every(x => block !== x);
+        }
+        return false;
+    }
 
     checkColisions() {
         var indexes = this.game.map.getIndexesByCoordinates(this.x, this.y, this.size, this.direction);

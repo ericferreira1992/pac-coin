@@ -58,11 +58,18 @@ export class Ghost {
         this.bornCoordI = { begin: this.bornCoordY.begin / this.size, end: this.bornCoordY.end / this.size };
         this.bornCoordJ = { begin: this.bornCoordX.begin / this.size, end: this.bornCoordX.end / this.size };
     
-        this.imagesPerState.WAITING.src = 'assets/img/ghosts/ghost.svg#' + this.name;
+        /* this.imagesPerState.WAITING.src = 'assets/img/ghosts/ghost.svg#' + this.name;
         this.imagesPerState.STOP_WAITING.src = 'assets/img/ghosts/ghost.svg#' + this.name;
-        this.imagesPerState.HUNTING.src = 'assets/img/ghosts/ghost.svg#' + this.name
+        this.imagesPerState.HUNTING.src = 'assets/img/ghosts/ghost.svg#' + this.name;
         this.imagesPerState.STUNNED.src = 'assets/img/ghosts/ghost.svg#stunned';
         this.imagesPerState.STUNNED_BLINK.src = 'assets/img/ghosts/ghost.svg#stunned_blink';
+        this.imagesPerState.DEAD_GO_HOME.src = 'assets/img/ghosts/ghost.svg#dead';
+        this.imagesPerState.DEAD.src = 'assets/img/ghosts/ghost.svg#dead'; */
+        this.imagesPerState.WAITING.src = `assets/img/ghosts/${this.name}.png`;
+        this.imagesPerState.STOP_WAITING.src = `assets/img/ghosts/${this.name}.png`;
+        this.imagesPerState.HUNTING.src = `assets/img/ghosts/${this.name}.png`;
+        this.imagesPerState.STUNNED.src = `assets/img/ghosts/${this.name}_stunned.png`;
+        this.imagesPerState.STUNNED_BLINK.src = `assets/img/ghosts/${this.name}_stunned.png`;
         this.imagesPerState.DEAD_GO_HOME.src = 'assets/img/ghosts/ghost.svg#dead';
         this.imagesPerState.DEAD.src = 'assets/img/ghosts/ghost.svg#dead';
     

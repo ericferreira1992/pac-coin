@@ -10,6 +10,8 @@ export class PacCoin {
     public moveRate = 5;
     public timeToRerender = 30;
 
+    public enableTouchControlToDesktop: boolean = false;
+
     public state: GAME_STATE;
 
     public colors = {
@@ -150,108 +152,132 @@ export class PacCoin {
     }
 
     private createMobileControl() {
-        if (Helper.isMobileDevice()) {
-            let controlHtml = `
-            <div class="mobile-control">
-                <div id="mobile-control-move"></div>
-            </div>`;
-            this.canvas.insertAdjacentHTML('afterend', controlHtml);
+        if (!this.enableTouchControlToDesktop && !Helper.isMobileDevice())
+            return;
 
-            let moveEl = document.getElementById('mobile-control-move');
+        let controlHtml = `
+        <div class="mobile-control">
+            <div id="mobile-control-move"></div>
+        </div>`;
+        this.canvas.insertAdjacentHTML('afterend', controlHtml);
 
-            let initX = moveEl.getBoundingClientRect().left;
-            let initY = moveEl.getBoundingClientRect().top;
-            let direction = DIRECTIONS.NONE;
+        let moveEl = document.getElementById('mobile-control-move');
 
-            let minDistance = 30;
-            let toucheState = 'NONE';
+        let initX = moveEl.getBoundingClientRect().left;
+        let initY = moveEl.getBoundingClientRect().top;
+        let direction = DIRECTIONS.NONE;
 
-            document.body.ontouchstart = (touchEvent) => {
-                let event = touchEvent.touches[0];
+        let minDistanceToStart = 10;
+        let maxDistance = 150;
+        let toucheState = 'NONE';
+        let intervalTouching: NodeJS.Timer = null;
 
-                if (toucheState === 'NONE') {
-                    initX = event.pageX;
-                    initY = event.pageY;
-    
-                    toucheState = 'START';
+        let onStart = (_event: TouchEvent | KeyboardEvent) => {
+            let event: any = (_event instanceof TouchEvent) ? (_event as TouchEvent).touches[0] : _event;
+
+            if (toucheState === 'NONE') {
+                initX = event.pageX;
+                initY = event.pageY;
+
+                toucheState = 'START';
+                moveEl.style.transition = '';
+
+                intervalTouching = setInterval(() => {
+                    if (direction !== DIRECTIONS.NONE)
+                        this.pac.onKeydown({ keyCode: this.pac.getCodeByDirection(direction) });    
+                }, this.timeToRerender);
+            }
+            else {
+                _event.cancelBubble = true;
+                _event.preventDefault();
+                return false;
+            }
+        }
+
+        let onMove = (_event: TouchEvent | KeyboardEvent) => {
+            let event: any = (_event instanceof TouchEvent) ? (_event as TouchEvent).touches[0] : _event;
+
+            if (toucheState === 'START' || toucheState === 'MOVING') {
+                toucheState = 'MOVING';
+                let nextDirection = DIRECTIONS.NONE;
+
+                let directionX = DIRECTIONS.NONE;
+                let directionY = DIRECTIONS.NONE;
+                let diffX = 0;
+                let diffY = 0;
+                let x = event.pageX;
+                let y = event.pageY;
+
+                // IN X
+                if (x > initX) {
+                    diffX = Math.min(x - initX, maxDistance);
+                    moveEl.style.left = `calc(50% + ${diffX}px)`;
+
+                    if (diffX >= minDistanceToStart)
+                        directionX = DIRECTIONS.RIGHT;
                 }
                 else {
-                    touchEvent.cancelBubble = true;
-                    touchEvent.preventDefault();
-                    return false;
+                    diffX = Math.min(initX - x, maxDistance);
+                    moveEl.style.left = `calc(50% - ${diffX}px)`;
+
+                    if (diffX >= minDistanceToStart)
+                        directionX = DIRECTIONS.LEFT;
                 }
-            }
-            document.body.ontouchmove = (touchEvent) => {
-                let event = touchEvent.touches[0];
 
-                if (toucheState === 'START' || toucheState === 'MOVING') {
-                    toucheState = 'MOVING';
+                // IN Y
+                if (y > initY) {
+                    diffY = Math.min(y - initY, maxDistance);
+                    moveEl.style.top = `calc(50% + ${diffY}px)`;
 
-                    let directionX = DIRECTIONS.NONE;
-                    let directionY = DIRECTIONS.NONE;
-                    let diffX = 0;
-                    let diffY = 0;
+                    if (diffY >= minDistanceToStart)
+                        directionY = DIRECTIONS.DOWN;
+                }
+                else {
+                    diffY = Math.min(initY - y, maxDistance);
+                    moveEl.style.top = `calc(50% - ${diffY}px)`;
 
-                    if (event.pageX > initX) {
-                        diffX = event.pageX - initX;
-                        moveEl.style.left = `calc(50% + ${diffX}px)`;
+                    if (diffY >= minDistanceToStart)
+                        directionY = DIRECTIONS.UP;
+                }
 
-                        if (diffX >= minDistance)
-                            directionX = DIRECTIONS.RIGHT;
-                    }
-                    else {
-                        diffX = initX - event.pageX;
-                        moveEl.style.left = `calc(50% - ${diffX}px)`;
-
-                        if (diffX >= minDistance)
-                            directionX = DIRECTIONS.LEFT;
-                    }
-
-                    if (event.pageY > initY) {
-                        diffY = event.pageY - initY;
-                        moveEl.style.top = `calc(50% + ${diffY}px)`;
-
-                        if (diffY >= minDistance)
-                            directionY = DIRECTIONS.DOWN;
-                    }
-                    else {
-                        diffY = initY - event.pageY;
-                        moveEl.style.top = `calc(50% - ${diffY}px)`;
-
-                        if (diffY >= minDistance)
-                            directionY = DIRECTIONS.UP;
-                    }
-
-                    if (diffX >= minDistance || diffY >= minDistance) {
-                        if (diffX > diffY)
-                            direction = directionX;
-                        else
-                            direction = directionY;
-
-                        this.pac.onKeydown({ keyCode: this.pac.getCodeByDirection(direction) });
-                    }
+                // DEFINE DIRECTIO
+                if (diffX >= minDistanceToStart || diffY >= minDistanceToStart) {
+                    if (diffX > diffY)
+                        nextDirection = directionX;
                     else
-                        direction = DIRECTIONS.NONE;
+                        nextDirection = directionY;
                 }
-            }
-            document.body.ontouchend = () => {
-                toucheState = 'NONE';
-                moveEl.style.left = '50%';
-                moveEl.style.top = '50%';
+                else
+                    nextDirection = DIRECTIONS.NONE;
 
-                if (direction !== DIRECTIONS.NONE)
-                    this.pac.onKeyup({ keyCode: this.pac.getCodeByDirection(direction) });
+                direction = nextDirection;
             }
+            _event.preventDefault();
+            return false;
+        }
+
+        let onEnd = () => {
+            toucheState = 'NONE';
+            moveEl.style.transition = 'all .2s';
+            moveEl.style.left = '50%';
+            moveEl.style.top = '50%';
+        }
+
+        if (Helper.isMobileDevice()) {
+            document.body.ontouchstart = onStart.bind(this);
+            document.body.ontouchmove = onMove.bind(this);
+            document.body.ontouchend = onEnd.bind(this);
+        } 
+        else if (this.enableTouchControlToDesktop) {
+            document.body.onmousedown = onStart.bind(this);
+            document.body.onmousemove = onMove.bind(this);
+            document.body.onmouseup = onEnd.bind(this);
         }
     }
 
     private makeListeners () {
         document.onkeydown = (event) => {
             this.pac.onKeydown(event);
-        };
-
-        document.onkeyup = (event) => {
-            this.pac.onKeyup(event);
         };
     }
 
