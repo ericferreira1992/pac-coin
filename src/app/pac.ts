@@ -9,7 +9,12 @@ import { isNullOrUndefined } from 'util';
 export class Pac {
     public game: PacCoin;
 
-    public image: any = null;
+    public capImage = {
+        LEFT: { img: new Image(), rateX: -.15, rateY: .2 },
+        RIGHT: { img: new Image(), rateX: .15, rateY: .2 },
+        UP: { img: new Image(), rateX: .2, rateY: -.15 },
+        DOWN: { img: new Image(), rateX: .2, rateY: .15 }
+    };
     public imageUrl = 'assets/img/sb-icon.svg';
     public size = 0;
     public x = 0;
@@ -30,6 +35,11 @@ export class Pac {
         this.y = this.game.map.pacBornCoords.y;
         this.toX = this.x;
         this.toY = this.y;
+
+        this.capImage.LEFT.img.src = 'assets/img/cap.svg#left';
+        this.capImage.RIGHT.img.src = 'assets/img/cap.svg#right';
+        this.capImage.UP.img.src = 'assets/img/cap.svg#up';
+        this.capImage.DOWN.img.src = 'assets/img/cap.svg#down';
     }
     
     public i(round = false) {
@@ -78,10 +88,6 @@ export class Pac {
                             this.toX = (Math.floor(this.toX / this.size) - 1) * this.size;
                     }
                 }
-                /* if (changeDirection && !changeOrientation) {
-                    this.direction = direction;
-                    this.toY = (this.i(lastDirection === DIRECTIONS.UP) * this.size);
-                }  */
             }
         }
     };
@@ -106,12 +112,7 @@ export class Pac {
                         else
                             this.toY = (Math.floor(this.toY / this.size) - 1) * this.size;
                     }
-                } 
-
-                /* if (changeDirection && !changeOrientation) {
-                    this.direction = direction;
-                    this.toY = (this.i(lastDirection === DIRECTIONS.UP) * this.size);
-                }  */
+                }
             }
         }
     };
@@ -136,11 +137,11 @@ export class Pac {
         }
     };
 
-    directionIsX(direction: any) {
+    directionIsX(direction?: any) {
         if (!direction) direction = this.direction;
         return direction === DIRECTIONS.LEFT || direction === DIRECTIONS.RIGHT;
     };
-    directionIsY(direction: any) {
+    directionIsY(direction?: any) {
         if (!direction) direction = this.direction;
         return direction === DIRECTIONS.UP || direction === DIRECTIONS.DOWN;
     };
@@ -163,6 +164,13 @@ export class Pac {
     render() {
         this.updateCoordinates();
 
+        this.renderPac();
+        this.renderCap();
+
+        this.checkPacFoundGhostStunned();
+    };
+
+    private renderPac() {
         var angle = this.calcAngle();
         this.game.context.beginPath();
         this.game.context.moveTo(this.x + (this.size / 2), this.y + (this.size / 2));
@@ -176,9 +184,14 @@ export class Pac {
             angle.direction
         );
         this.game.context.fill();
-
-        this.checkPacFoundGhostStunned();
-    };
+    }
+    private renderCap() {
+        let direction = this.direction === DIRECTIONS.NONE ? DIRECTIONS.LEFT : this.direction;
+        let image = this.capImage[direction].img;
+        let x = this.x - (this.size * this.capImage[direction].rateX);
+        let y = this.y - (this.size * this.capImage[direction].rateY);
+        this.game.context.drawImage(image, x, y,  Math.floor(this.size), Math.floor(this.size));
+    }
 
     private checkPacFoundGhostStunned() {
         if (this.game.isRunning) {
@@ -188,16 +201,31 @@ export class Pac {
             let stunnedGhosts = this.game.ghosts.filter(x => (x.state === GHOST_STATE.STUNNED || x.state === GHOST_STATE.STUNNED_BLINK));
             for (let ghost of stunnedGhosts) {
                 let diff = 0;
+
+                let ghostI = (ghost.y + ghost.leftoverSize) / ghost.blockSize;
+                let ghostJ = (ghost.x + ghost.leftoverSize) / ghost.blockSize;
     
-                if (ghost.i() === i)
-                    diff = Math.abs(ghost.j() - j);
-        
-                if (ghost.j() === j)
-                    diff = Math.abs(ghost.i() - i);
-        
-                if (diff > 0 && diff <= .5) {
-                    this.game.pacFoundStunnedGhost(ghost);
-                    break;
+                if (i !== ghostI || j !== ghostJ) {
+
+                    if (i !== ghostI && j !== ghostJ) {
+                        if (this.directionIsX(ghost.direction))
+                            ghostI = ghost.y / ghost.blockSize;
+                        else
+                            ghostJ = ghost.x / ghost.blockSize;
+
+                        if (i !== ghostI && j !== ghostJ)
+                            continue;
+                    }
+
+                    if (ghostI === i)
+                        diff = Math.abs(ghostJ - j);
+                    else if (ghostJ === j)
+                        diff = Math.abs(ghostI - i);
+                    else
+                        continue;
+            
+                    if (diff >= 0 && diff <= .8)
+                        this.game.pacFoundStunnedGhost(ghost);
                 }
             }
         }
@@ -217,6 +245,13 @@ export class Pac {
         if (this.game.isRunning) {
             var nextX = this.game.applySmoothCoord(this.x, this.toX);
             var nextY = this.game.applySmoothCoord(this.y, this.toY);
+
+            if (!this.enteringPortal) {
+                if (this.directionIsX())
+                    this.enteringPortal = this.direction === DIRECTIONS.LEFT ? (nextX < 0) : (nextX + this.size) > this.game.width;
+                else if (this.directionIsY())
+                    this.enteringPortal = this.direction === DIRECTIONS.UP ? (nextY < 0) : (nextY + this.size) > this.game.height;
+            }
     
             if (!this.enteringPortal) {
                 if (nextX !== this.x || nextY !== this.y) {
@@ -227,11 +262,10 @@ export class Pac {
                         this.checkColisions();
                     }
                     else {
-                        console.log('DEU RUIM');
                         this.x = this.j(this.direction === DIRECTIONS.LEFT) * this.size;
                         this.y = this.i(this.direction === DIRECTIONS.UP) * this.size;
                         this.toX = this.x;
-                        this.toY = this.y
+                        this.toY = this.y;
                     }
                 }
                 else {

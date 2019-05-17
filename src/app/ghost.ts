@@ -10,6 +10,7 @@ export class Ghost {
     public name: string;
 
     public size = 0;
+    public blockSize = 0;
 
     public bornCoordX: any = null;
     public bornCoordY: any = null;
@@ -28,6 +29,7 @@ export class Ghost {
 
     public x = 0;
     public y = 0;
+    
     public toX = this.x;
     public toY = this.y;
 
@@ -47,16 +49,20 @@ export class Ghost {
     public lastDestinationToGo: { i: number, j: number, exact: { i: number, j: number } } = null;
     public arrayDirectionsToGo: any[] = [];
 
+    public get diffSize() { return this.blockSize - this.size; }
+    public get leftoverSize() { return this.diffSize / 2; }
+
     constructor(game: PacCoin, name: string) {
         this.game = game;
         this.name = name;
     
-        this.size = this.game.blockSize;
+        this.blockSize = this.game.blockSize;
+        this.size = Math.floor(this.blockSize * 1.5);
     
         this.bornCoordX = this.game.map.ghostBornCoords.x;
         this.bornCoordY = this.game.map.ghostBornCoords.y;
-        this.bornCoordI = { begin: this.bornCoordY.begin / this.size, end: this.bornCoordY.end / this.size };
-        this.bornCoordJ = { begin: this.bornCoordX.begin / this.size, end: this.bornCoordX.end / this.size };
+        this.bornCoordI = { begin: this.bornCoordY.begin / this.blockSize, end: this.bornCoordY.end / this.blockSize };
+        this.bornCoordJ = { begin: this.bornCoordX.begin / this.blockSize, end: this.bornCoordX.end / this.blockSize };
     
         /* this.imagesPerState.WAITING.src = 'assets/img/ghosts/ghost.svg#' + this.name;
         this.imagesPerState.STOP_WAITING.src = 'assets/img/ghosts/ghost.svg#' + this.name;
@@ -65,11 +71,12 @@ export class Ghost {
         this.imagesPerState.STUNNED_BLINK.src = 'assets/img/ghosts/ghost.svg#stunned_blink';
         this.imagesPerState.DEAD_GO_HOME.src = 'assets/img/ghosts/ghost.svg#dead';
         this.imagesPerState.DEAD.src = 'assets/img/ghosts/ghost.svg#dead'; */
+
         this.imagesPerState.WAITING.src = `assets/img/ghosts/${this.name}.png`;
         this.imagesPerState.STOP_WAITING.src = `assets/img/ghosts/${this.name}.png`;
         this.imagesPerState.HUNTING.src = `assets/img/ghosts/${this.name}.png`;
         this.imagesPerState.STUNNED.src = `assets/img/ghosts/${this.name}_stunned.png`;
-        this.imagesPerState.STUNNED_BLINK.src = `assets/img/ghosts/${this.name}_stunned.png`;
+        this.imagesPerState.STUNNED_BLINK.src = `assets/img/ghosts/${this.name}.png`;
         this.imagesPerState.DEAD_GO_HOME.src = 'assets/img/ghosts/ghost.svg#dead';
         this.imagesPerState.DEAD.src = 'assets/img/ghosts/ghost.svg#dead';
     
@@ -84,7 +91,7 @@ export class Ghost {
     ghostNumber() { return parseInt(this.name); }
     
     i(round = false) {
-        let size = this.size;
+        let size = this.blockSize;
         let y = this.y;
         
         if (round && this.direction === DIRECTIONS.UP)
@@ -99,7 +106,7 @@ export class Ghost {
     };
 
     j(round = false, direction?: string) {
-        let size = this.size;
+        let size = this.blockSize;
         let x = this.x;
         
         if (!direction)
@@ -130,8 +137,8 @@ export class Ghost {
             initJ = this.j();
 
         this.state = STATES.WAITING;
-        this.x = initJ * this.size;
-        this.y = initI * this.size;
+        this.x = initJ * this.blockSize;
+        this.y = initI * this.blockSize;
         this.clearWalkCoordinates();
 
         if (this.bornCoordI.begin !== this.bornCoordI.end) {
@@ -154,7 +161,7 @@ export class Ghost {
 
         if (this.canRender()) {
             this.updateCoordinates();
-            this.game.context.drawImage(this.image, this.x, this.y, this.size, this.size);
+            this.game.context.drawImage(this.image, (this.x + this.leftoverSize), (this.y + this.leftoverSize), this.size, this.size);
         }
     };
 
@@ -175,8 +182,8 @@ export class Ghost {
                             this.stopWaitingAndGoHunting();
                         else {
                             let limit = {
-                                x: { min: this.bornCoordJ.begin * this.size, max: this.bornCoordJ.end * this.size },
-                                y: { min: this.bornCoordI.begin * this.size, max: this.bornCoordI.end * this.size }
+                                x: { min: this.bornCoordJ.begin * this.blockSize, max: this.bornCoordJ.end * this.blockSize },
+                                y: { min: this.bornCoordI.begin * this.blockSize, max: this.bornCoordI.end * this.blockSize }
                             }
 
                             if (this.canGoInTheDirection(this.direction, this.x, this.y, limit))
@@ -412,13 +419,13 @@ export class Ghost {
     }
 
     goToNextCoords(nextX: number, nextY: number) {
-        if (!this.game.map.isCollidingWithWall(nextX, nextY, this.size)){
+        if (!this.game.map.isCollidingWithWall(nextX, nextY, this.blockSize)){
             this.x = nextX;
             this.y = nextY;
         }
         else {
-            this.x = Math.floor(this.j()) * this.size;
-            this.y = Math.floor(this.i()) * this.size;
+            this.x = Math.floor(this.j()) * this.blockSize;
+            this.y = Math.floor(this.i()) * this.blockSize;
             this.clearWalkCoordinates();
         }
     };
@@ -427,13 +434,13 @@ export class Ghost {
         this.direction = direction;
 
         if (direction === DIRECTIONS.UP)
-            this.toY = this.y - this.size;
+            this.toY = this.y - this.blockSize;
         else if (direction === DIRECTIONS.DOWN)
-            this.toY = this.y + this.size;
+            this.toY = this.y + this.blockSize;
         else if (direction === DIRECTIONS.LEFT)
-            this.toX = this.x - this.size;
+            this.toX = this.x - this.blockSize;
         else if (direction === DIRECTIONS.RIGHT)
-            this.toX = this.x + this.size;
+            this.toX = this.x + this.blockSize;
     }
 
     canGoInTheDirection(direction: string, x?: number, y?: number, limit?: any) {
@@ -443,13 +450,13 @@ export class Ghost {
             y = this.y;
 
         if (direction === DIRECTIONS.UP)
-            y -= this.size;
+            y -= this.blockSize;
         else if (direction === DIRECTIONS.DOWN)
-            y += this.size;
+            y += this.blockSize;
         else if (direction === DIRECTIONS.LEFT)
-            x -= this.size;
+            x -= this.blockSize;
         else if (direction === DIRECTIONS.RIGHT)
-            x += this.size;
+            x += this.blockSize;
 
         if (limit) {
             if (x < limit.x.min || x > limit.x.max)
@@ -458,7 +465,7 @@ export class Ghost {
                 return false;
         }
 
-        let block = this.game.map.getBlockByCoordinates(x, y, this.size);
+        let block = this.game.map.getBlockByCoordinates(x, y, this.blockSize);
 
         if (this.state === STATES.HUNTING || this.state === STATES.STUNNED)
             return block !== BLOCK_TYPE.WALL &&
@@ -490,8 +497,8 @@ export class Ghost {
                     direction = DIRECTIONS.DOWN;
 
                 if (direction) {
-                    this.toX = j * this.size;
-                    this.toY = (i + rate) * this.size;
+                    this.toX = j * this.blockSize;
+                    this.toY = (i + rate) * this.blockSize;
 
                     if (this.x !== this.toX)
                         this.direction = this.x < this.toX ? DIRECTIONS.RIGHT : DIRECTIONS.LEFT;
@@ -516,8 +523,8 @@ export class Ghost {
                     direction = DIRECTIONS.RIGHT;
 
                 if (direction) {
-                    this.toX = (j + rate) * this.size;
-                    this.toY = i * this.size;
+                    this.toX = (j + rate) * this.blockSize;
+                    this.toY = i * this.blockSize;
 
 
                     if (this.y !== this.toY)
@@ -534,8 +541,8 @@ export class Ghost {
         if (this.destinationToGo || alternativePositions) {
             if (enter) {
                 let diff = 0;
-                let i = this.y / this.size;
-                let j = this.x / this.size;
+                let i = (this.y + this.leftoverSize) / this.blockSize;
+                let j = (this.x + this.leftoverSize) / this.blockSize;
 
                 let toGo;
 
@@ -548,6 +555,16 @@ export class Ghost {
                 let jDest = toGo.j;
 
                 if (i !== iDest || j !== jDest) {
+                    if (i !== iDest && j !== jDest) {
+                        if (this.directionIsX(this.direction))
+                            i = this.y / this.blockSize;
+                        else
+                            j = this.x / this.blockSize;
+
+                        if (i !== iDest && j !== jDest)
+                            return false;
+                    }
+
                     if (iDest === i)
                         diff = Math.abs(jDest - j);
                     else if (jDest === j)
@@ -555,7 +572,7 @@ export class Ghost {
                     else
                         return false;
 
-                    return diff >= 0 && diff <= .5;
+                    return diff >= 0 && diff <= .8;
                 }
 
                 return true;
@@ -583,8 +600,8 @@ export class Ghost {
             this.lastDestinationToGo = this.destinationToGo;
             let detination = this.lastDestinationToGo;
 
-            let destX = detination.j * this.size;
-            let destY = detination.i * this.size;
+            let destX = detination.j * this.blockSize;
+            let destY = detination.i * this.blockSize;
 
             let x = this.x;
             let y = this.y;
@@ -639,9 +656,9 @@ export class Ghost {
                                 let lastDirection = direction;
 
                                 if (this.directionIsX(direction))
-                                    x += this.size * (direction === DIRECTIONS.LEFT ? -1 : 1);
+                                    x += this.blockSize * (direction === DIRECTIONS.LEFT ? -1 : 1);
                                 else
-                                    y += this.size * (direction === DIRECTIONS.UP ? -1 : 1);
+                                    y += this.blockSize * (direction === DIRECTIONS.UP ? -1 : 1);
 
                                 diffDistanceX = Math.abs(x - destX);
                                 diffDistanceY = Math.abs(y - destY);
