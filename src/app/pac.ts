@@ -186,11 +186,13 @@ export class Pac {
         this.game.context.fill();
     }
     private renderCap() {
-        let direction = this.direction === DIRECTIONS.NONE ? DIRECTIONS.LEFT : this.direction;
-        let image = this.capImage[direction].img;
-        let x = this.x - (this.size * this.capImage[direction].rateX);
-        let y = this.y - (this.size * this.capImage[direction].rateY);
-        this.game.context.drawImage(image, x, y,  Math.floor(this.size), Math.floor(this.size));
+        if (this.game.isSocialBank()) {
+            let direction = this.direction === DIRECTIONS.NONE ? DIRECTIONS.LEFT : this.direction;
+            let image = this.capImage[direction].img;
+            let x = this.x - (this.size * this.capImage[direction].rateX);
+            let y = this.y - (this.size * this.capImage[direction].rateY);
+            this.game.context.drawImage(image, x, y,  Math.floor(this.size), Math.floor(this.size));
+        }
     }
 
     private checkPacFoundGhostStunned() {

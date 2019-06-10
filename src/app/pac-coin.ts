@@ -328,6 +328,10 @@ export class PacCoin {
         }
         return fromPosition;
     }
+
+    public isSocialBank() {
+        return Helper.getUrlParams().sb === 'true';
+    }
 }
 
 export enum GAME_STATE {

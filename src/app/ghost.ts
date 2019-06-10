@@ -57,28 +57,34 @@ export class Ghost {
         this.name = name;
     
         this.blockSize = this.game.blockSize;
-        this.size = Math.floor(this.blockSize * 1.5);
     
         this.bornCoordX = this.game.map.ghostBornCoords.x;
         this.bornCoordY = this.game.map.ghostBornCoords.y;
         this.bornCoordI = { begin: this.bornCoordY.begin / this.blockSize, end: this.bornCoordY.end / this.blockSize };
         this.bornCoordJ = { begin: this.bornCoordX.begin / this.blockSize, end: this.bornCoordX.end / this.blockSize };
     
-        /* this.imagesPerState.WAITING.src = 'assets/img/ghosts/ghost.svg#' + this.name;
-        this.imagesPerState.STOP_WAITING.src = 'assets/img/ghosts/ghost.svg#' + this.name;
-        this.imagesPerState.HUNTING.src = 'assets/img/ghosts/ghost.svg#' + this.name;
-        this.imagesPerState.STUNNED.src = 'assets/img/ghosts/ghost.svg#stunned';
-        this.imagesPerState.STUNNED_BLINK.src = 'assets/img/ghosts/ghost.svg#stunned_blink';
-        this.imagesPerState.DEAD_GO_HOME.src = 'assets/img/ghosts/ghost.svg#dead';
-        this.imagesPerState.DEAD.src = 'assets/img/ghosts/ghost.svg#dead'; */
 
-        this.imagesPerState.WAITING.src = `assets/img/ghosts/${this.name}.png`;
-        this.imagesPerState.STOP_WAITING.src = `assets/img/ghosts/${this.name}.png`;
-        this.imagesPerState.HUNTING.src = `assets/img/ghosts/${this.name}.png`;
-        this.imagesPerState.STUNNED.src = `assets/img/ghosts/${this.name}_stunned.png`;
-        this.imagesPerState.STUNNED_BLINK.src = `assets/img/ghosts/${this.name}.png`;
-        this.imagesPerState.DEAD_GO_HOME.src = 'assets/img/ghosts/ghost.svg#dead';
-        this.imagesPerState.DEAD.src = 'assets/img/ghosts/ghost.svg#dead';
+        if (this.game.isSocialBank()) {
+            this.size = Math.floor(this.blockSize * 1.5);
+
+            this.imagesPerState.WAITING.src = `assets/img/ghosts/${this.name}.png`;
+            this.imagesPerState.STOP_WAITING.src = `assets/img/ghosts/${this.name}.png`;
+            this.imagesPerState.HUNTING.src = `assets/img/ghosts/${this.name}.png`;
+            this.imagesPerState.STUNNED.src = `assets/img/ghosts/${this.name}_stunned.png`;
+            this.imagesPerState.STUNNED_BLINK.src = `assets/img/ghosts/${this.name}.png`;
+            this.imagesPerState.DEAD_GO_HOME.src = 'assets/img/ghosts/ghost.svg#dead';
+            this.imagesPerState.DEAD.src = 'assets/img/ghosts/ghost.svg#dead';
+        }
+        else {
+            this.size = this.blockSize;
+            this.imagesPerState.WAITING.src = 'assets/img/ghosts/ghost.svg#' + this.name;
+            this.imagesPerState.STOP_WAITING.src = 'assets/img/ghosts/ghost.svg#' + this.name;
+            this.imagesPerState.HUNTING.src = 'assets/img/ghosts/ghost.svg#' + this.name;
+            this.imagesPerState.STUNNED.src = 'assets/img/ghosts/ghost.svg#stunned';
+            this.imagesPerState.STUNNED_BLINK.src = 'assets/img/ghosts/ghost.svg#stunned_blink';
+            this.imagesPerState.DEAD_GO_HOME.src = 'assets/img/ghosts/ghost.svg#dead';
+            this.imagesPerState.DEAD.src = 'assets/img/ghosts/ghost.svg#dead';
+        }
     
         this.leaveWaitingTime = 5000 + ((this.ghostNumber() - 1) * 4000);
         this.renderWaitingTime = (this.ghostNumber() - 1) * 4000;
@@ -249,8 +255,7 @@ export class Ghost {
                     break;
                 }
                 case STATES.STUNNED:
-                case STATES.STUNNED_BLINK: {;
-
+                case STATES.STUNNED_BLINK: {
                     let timeLeft = (this.stunningWaitingTime - this.howLongIsTheWait);
 
                     if (timeLeft > 0 && timeLeft <= this.stunningBlinkAtEndOf) {

@@ -18,4 +18,13 @@ export class Helper {
     public static isMobileDevice() {
         return (typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1);
     }
+
+    public static getUrlParams() {
+        let vars = {} as any;
+        window.location.href.replace(/[?&]+([^=&]+)=([^&]*)/gi, (m, key, value) => {
+            vars[key] = value;
+            return  value;
+        });
+        return vars;
+    }
 }
